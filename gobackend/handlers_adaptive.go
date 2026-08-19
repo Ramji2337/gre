@@ -17,18 +17,40 @@ func getAdaptiveSettings() AdaptiveSettings {
 		settings = AdaptiveSettings{
 			AdaptiveEnabled:   true,
 			RoutingModel:      "GRE-style Section-Level Adaptive Testing (MST-inspired)",
-			VerbalEasyMax:     5,
-			VerbalMediumMax:   8,
-			QuantEasyMax:      5,
-			QuantMediumMax:    8,
+			VerbalEasyMax:     4,
+			VerbalMediumMax:   7,
+			QuantEasyMax:      4,
+			QuantMediumMax:    7,
 			Section1Count:     12,
-			Section2Count:     15,
+			Section2Count:     12,
 			ModuleLowerLabel:  "Lower-level module",
 			ModuleMediumLabel: "Medium-level module",
 			ModuleHigherLabel: "Higher-level module",
 			UpdatedAt:         time.Now(),
 		}
 		getCollection("adaptive_settings").InsertOne(context.Background(), settings)
+	} else if settings.VerbalEasyMax == 5 || settings.Section2Count == 15 {
+		// Migration: Update existing DB document to official 12-question thresholds (0-4 Easy, 5-7 Medium, >=8 Hard)
+		settings.VerbalEasyMax = 4
+		settings.VerbalMediumMax = 7
+		settings.QuantEasyMax = 4
+		settings.QuantMediumMax = 7
+		settings.Section1Count = 12
+		settings.Section2Count = 12
+		settings.UpdatedAt = time.Now()
+		getCollection("adaptive_settings").UpdateOne(
+			context.Background(),
+			bson.M{"_id": settings.ID},
+			bson.M{"$set": bson.M{
+				"verbal_easy_max":   4,
+				"verbal_medium_max": 7,
+				"quant_easy_max":    4,
+				"quant_medium_max":  7,
+				"section1_count":    12,
+				"section2_count":    12,
+				"updated_at":        settings.UpdatedAt,
+			}},
+		)
 	}
 	return settings
 }

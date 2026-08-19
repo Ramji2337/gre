@@ -314,18 +314,29 @@ func handleStudentDashboard(c *fiber.Ctx) error {
 	verbalScore := 130
 	if verbalTotal > 0 {
 		verbalScore = 130 + int(verbalAccuracy*40/100)
-		if verbalScore > 170 {
-			verbalScore = 170
-		}
 	}
+	if verbalScore < 130 {
+		verbalScore = 130
+	} else if verbalScore > 170 {
+		verbalScore = 170
+	}
+
 	quantScore := 130
 	if quantTotal > 0 {
 		quantScore = 130 + int(quantAccuracy*40/100)
-		if quantScore > 170 {
-			quantScore = 170
-		}
 	}
+	if quantScore < 130 {
+		quantScore = 130
+	} else if quantScore > 170 {
+		quantScore = 170
+	}
+
 	overallScore := verbalScore + quantScore
+	if overallScore < 260 {
+		overallScore = 260
+	} else if overallScore > 340 {
+		overallScore = 340
+	}
 
 	overallAccuracy := 0.0
 	if totalQuestions > 0 {

@@ -131,11 +131,11 @@ func (qs *QuestionSelector) SelectFullLengthExam() ([]TestSection, []string, err
 	}
 
 	sections := []TestSection{
-		{Name: "Analytical Writing", Subject: "AWA", Difficulty: "", QuestionIDs: extractQuestionIDs(awaQuestions), DurationMins: 30, IsSelected: true},
-		{Name: "Verbal Reasoning 1", Subject: "Verbal", Difficulty: "", QuestionIDs: extractQuestionIDs(verbalQuestions), DurationMins: 18, IsSelected: true},
-		{Name: "Verbal Reasoning 2", Subject: "Verbal", Difficulty: "", QuestionIDs: []string{}, DurationMins: 23, IsSelected: false},
-		{Name: "Quantitative Reasoning 1", Subject: "Quant", Difficulty: "", QuestionIDs: extractQuestionIDs(quantQuestions), DurationMins: 21, IsSelected: true},
-		{Name: "Quantitative Reasoning 2", Subject: "Quant", Difficulty: "", QuestionIDs: []string{}, DurationMins: 26, IsSelected: false},
+		{Name: "Analytical Writing", Subject: "AWA", Difficulty: "", QuestionIDs: extractQuestionIDs(awaQuestions), DurationMins: 30, RemainingTimeSecs: 1800, Locked: false, IsSelected: true},
+		{Name: "Verbal Reasoning 1", Subject: "Verbal", Difficulty: "", QuestionIDs: extractQuestionIDs(verbalQuestions), DurationMins: 18, RemainingTimeSecs: 1080, Locked: false, IsSelected: true},
+		{Name: "Verbal Reasoning 2", Subject: "Verbal", Difficulty: "", QuestionIDs: []string{}, DurationMins: 23, RemainingTimeSecs: 1380, Locked: true, IsSelected: false},
+		{Name: "Quantitative Reasoning 1", Subject: "Quant", Difficulty: "", QuestionIDs: extractQuestionIDs(quantQuestions), DurationMins: 21, RemainingTimeSecs: 1260, Locked: false, IsSelected: true},
+		{Name: "Quantitative Reasoning 2", Subject: "Quant", Difficulty: "", QuestionIDs: []string{}, DurationMins: 26, RemainingTimeSecs: 1560, Locked: true, IsSelected: false},
 	}
 
 	allIDs := []string{}
