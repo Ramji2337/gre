@@ -9,7 +9,7 @@ os.makedirs(output_dir, exist_ok=True)
 headers = [
     "Category", "Level", "Question Type", "Question Text", "Passage",
     "Option A", "Option B", "Option C", "Option D", "Option E", "Option F",
-    "Correct Answer", "Explanation", "Question Images"
+    "Correct Answer", "Explanation", "Question Images", "Answer Images"
 ]
 
 def create_excel(filename, sheet_title, data_rows):
@@ -95,7 +95,23 @@ verbal_rows = [
 ]
 create_excel("sample_verbal_questions.xlsx", "Verbal Questions", verbal_rows)
 
-print("Successfully generated 3 Excel templates with 10 rows each in /home/ramji/Desktop/GRE/gre/excels:")
-print(" - sample_awa_questions.xlsx")
-print(" - sample_quant_questions.xlsx")
-print(" - sample_verbal_questions.xlsx")
+# 4. Image Questions Excel (Question Images & Answer Option Images Edge Cases - 10 rows)
+image_rows = [
+    ["GRE Geometry", "Medium", "MCQ", "In the geometric diagram below, what is the area of the shaded region?", "", "12", "16", "24", "32", "48", "", "C", "Area = (1/2)*base*height = (1/2)*6*8 = 24.", "triangle_geometry_fig1.png", ""],
+    ["GRE Coordinate Geometry", "Hard", "QUANTITATIVE_COMPARISON", "Refer to the coordinate plane figure.\nQuantity A: Slope of line L1\nQuantity B: Slope of line L2", "", "Quantity A is greater.", "Quantity B is greater.", "The two quantities are equal.", "The relationship cannot be determined from the information given.", "", "", "A", "Line L1 has slope 2 while line L2 has slope 0.5. 2 > 0.5.", "coordinate_grid_lines.png", ""],
+    ["GRE Data Interpretation", "Medium", "MULTIPLE_CHOICE_MULTI", "Based on the bar graph figure, in which years did total revenue exceed $50 million?", "", "2018", "2019", "2020", "2021", "2022", "", "B,D", "Bar heights for 2019 ($55M) and 2021 ($62M) exceed $50M.", "bar_chart_revenue.png", ""],
+    ["GRE Quant Image Options", "Hard", "MCQ", "Which of the option diagrams represents the correct graph of y = |x - 3|?", "", "Graph Option A", "Graph Option B", "Graph Option C", "Graph Option D", "", "", "B", "y = |x - 3| has a V-shape vertex at (3,0).", "question_graph_v.png", "opt_graph_a.png, opt_graph_b.png, opt_graph_c.png, opt_graph_d.png"],
+    ["GRE Geometry Circle", "Easy", "MCQ", "In circle O shown in the figure, what is the measure of angle AOB?", "", "30°", "45°", "60°", "90°", "120°", "", "C", "Angle AOB subtends an arc of 60°.", "circle_angle_fig.png", ""],
+    ["GRE Multi-Figure", "Hard", "QUANTITATIVE_COMPARISON", "Refer to Figure 1 and Figure 2.\nQuantity A: Perimeter of Figure 1\nQuantity B: Perimeter of Figure 2", "", "Quantity A is greater.", "Quantity B is greater.", "The two quantities are equal.", "The relationship cannot be determined from the information given.", "", "", "C", "Both figures have equal perimeter of 24 units.", "fig1_square.png, fig2_rectangle.png", ""],
+    ["GRE Image Choices", "Medium", "MCQ", "Which of the vector diagrams correctly shows the resultant vector R = A + B?", "", "Vector Choice A", "Vector Choice B", "Vector Choice C", "Vector Choice D", "", "", "A", "Vector A tip-to-tail with Vector B yields resultant R in choice A.", "", "vector_a.png, vector_b.png, vector_c.png, vector_d.png"],
+    ["GRE Quant Figure Numeric", "Medium", "NUMERIC_ENTRY", "In the right triangle shown in the figure, what is the length of side x?", "", "", "", "", "", "", "", "15", "x = sqrt(9^2 + 12^2) = sqrt(81 + 144) = sqrt(225) = 15.", "right_triangle_xyz.png", ""],
+    ["GRE Verbal Image Comprehension", "Medium", "MCQ", "Which architectural component highlighted in the diagram corresponds to the 'buttress'?", "", "Component A", "Component B", "Component C", "Component D", "", "", "C", "Component C shows the flying buttress support structure.", "gothic_cathedral_diagram.png", ""],
+    ["GRE Data Chart", "Easy", "MCQ", "Based on the pie chart, what percentage of total expenses was spent on research?", "", "15%", "25%", "35%", "40%", "50%", "", "B", "The pie chart sector for Research indicates 25%.", "expense_pie_chart.png", ""]
+]
+create_excel("sample_image_questions.xlsx", "Image Questions", image_rows)
+
+print("Successfully generated 4 Excel templates in /home/ramji/Desktop/GRE/gre/excels:")
+print(" 1. sample_awa_questions.xlsx")
+print(" 2. sample_quant_questions.xlsx")
+print(" 3. sample_verbal_questions.xlsx")
+print(" 4. sample_image_questions.xlsx")

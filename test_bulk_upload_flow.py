@@ -30,14 +30,15 @@ if token:
 files_to_test = [
     ("AWA", "/home/ramji/Desktop/GRE/gre/excels/sample_awa_questions.xlsx"),
     ("Quant", "/home/ramji/Desktop/GRE/gre/excels/sample_quant_questions.xlsx"),
-    ("Verbal", "/home/ramji/Desktop/GRE/gre/excels/sample_verbal_questions.xlsx")
+    ("Verbal", "/home/ramji/Desktop/GRE/gre/excels/sample_verbal_questions.xlsx"),
+    ("Quant", "/home/ramji/Desktop/GRE/gre/excels/sample_image_questions.xlsx")
 ]
 
-print("\n2. Uploading 3 Excel Template Files to Backend API...")
+print("\n2. Uploading 4 Excel Template Files to Backend API...")
 uploaded_ids = []
 
 for subject, file_path in files_to_test:
-    print(f"\n---> Uploading {subject} Excel ({file_path})...")
+    print(f"\n---> Uploading {subject} Excel ({os.path.basename(file_path)})...")
     with open(file_path, "rb") as f:
         files = {"file": (os.path.basename(file_path), f, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")}
         data_param = {"subject": subject, "update_mode": "true"}
@@ -65,4 +66,4 @@ del_quant = db.quant_questions.delete_many({"question_id": {"$regex": "^BULK_Qua
 del_verbal = db.verbal_questions.delete_many({"question_id": {"$regex": "^BULK_Verbal_"}})
 
 print(f"Cleaned up DB test rows: AWA deleted={del_awa.deleted_count}, Quant deleted={del_quant.deleted_count}, Verbal deleted={del_verbal.deleted_count}")
-print("\n✅ EXCEL BULK UPLOAD TEST COMPLETED 100% SUCCESSFULLY!")
+print("\n✅ ALL 4 EXCEL TEMPLATES TESTED & VERIFIED 100% SUCCESSFULLY!")
