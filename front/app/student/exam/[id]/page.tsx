@@ -840,7 +840,7 @@ export default function ExamPlayerPage() {
                 {examData?.sections?.length || 0} SECTIONS
               </span>
             </div>
-            <p className="text-[11px] text-slate-400 mt-1">Jump to any section anytime</p>
+            <p className="text-[11px] text-slate-400 mt-1">Navigate available sections</p>
           </div>
 
           <div className="flex-1 overflow-y-auto p-3 space-y-2">
@@ -1030,20 +1030,21 @@ export default function ExamPlayerPage() {
               {(() => {
                 const getImages = (q: any): string[] => {
                   const urls: string[] = [];
+                  const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3500";
                   const resolveUrl = (imgItem: any) => {
                     if (!imgItem) return "";
                     let path = "";
                     if (typeof imgItem === "string") path = imgItem;
-                    else if (typeof imgItem === "object") path = imgItem.image_name || imgItem.url || imgItem.src || imgItem.image || "";
+                    else if (typeof imgItem === "object") path = imgItem.image_name || imgItem.url || imgItem.src || imgItem.image || imgItem.object_name || "";
                     if (!path) return "";
                     if (path.startsWith("http://") || path.startsWith("https://")) {
                       if (path.includes("kprcloud-storage.cloudlab.works/gretestimages/")) {
                         const filename = path.replace("https://kprcloud-storage.cloudlab.works/gretestimages/", "").replace("http://kprcloud-storage.cloudlab.works/gretestimages/", "");
-                        return `http://localhost:3500/api/images/${encodeURIComponent(filename)}`;
+                        return `${API_BASE}/api/images/${encodeURIComponent(filename)}`;
                       }
                       return path;
                     }
-                    return `http://localhost:3500/api/images/${encodeURIComponent(path)}`;
+                    return `${API_BASE}/api/images/${encodeURIComponent(path)}`;
                   };
 
                   if (q.images && Array.isArray(q.images)) {
@@ -1075,6 +1076,7 @@ export default function ExamPlayerPage() {
                           alt={`Question figure ${i + 1}`}
                           className="max-w-full max-h-96 object-contain rounded-lg border border-slate-300 shadow-sm"
                           onError={(e) => {
+                            console.warn(`[Image load failed for Q:${currentQuestion?.question_id}]:`, url);
                             const target = e.target as HTMLImageElement;
                             target.src = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="360" height="200" viewBox="0 0 360 200"><rect width="360" height="200" fill="%23f8fafc" stroke="%23cbd5e1" stroke-width="2" rx="10"/><path d="M140 90L165 120L185 100L220 140H140V90Z" fill="%23cbd5e1"/><circle cx="210" cy="80" r="12" fill="%23cbd5e1"/><text x="180" y="165" font-family="sans-serif" font-size="12" font-weight="600" fill="%2364748b" text-anchor="middle">Figure Diagram Asset</text></svg>`;
                           }}
@@ -1094,12 +1096,17 @@ export default function ExamPlayerPage() {
                   currentQuestion?.question_type === "AWA" ||
                   currentQuestion?.answer_format === "ESSAY";
 
+                const fmtUpper = (currentQuestion?.answer_format || "").toUpperCase();
+                const typeUpper = (currentQuestion?.question_type || "").toUpperCase();
+                const catUpper = (currentQuestion?.category || "").toUpperCase();
+                const textUpper = (currentQuestion?.question_text || "").toUpperCase();
+
                 // Quantitative Comparison (QC) check
                 const isQC =
                   currentQuestion?.subject === "Quant" &&
-                  (currentQuestion?.question_text?.toLowerCase().includes("quantity a") ||
-                    currentQuestion?.category?.toLowerCase().includes("quantitative comparison") ||
-                    currentQuestion?.question_type?.toLowerCase().includes("quantitative comparison"));
+                  (textUpper.includes("QUANTITY A") ||
+                    catUpper.includes("QUANTITATIVE COMPARISON") ||
+                    typeUpper.includes("QUANTITATIVE COMPARISON"));
 
                 const defaultQCOptions = [
                   { label: "A", text: "Quantity A is greater." },
@@ -1108,41 +1115,29 @@ export default function ExamPlayerPage() {
                   { label: "D", text: "The relationship cannot be determined from the information given." },
                 ];
 
-                // Check for dummy placeholder options (Option A, Option B...)
-                const hasDummyOptions =
-                  currentQuestion?.options &&
-                  currentQuestion.options.length > 0 &&
-                  currentQuestion.options.every((opt: any) =>
-                    /^option\s+[a-d]$/i.test((opt.text || "").trim())
-                  );
-
-                // Numeric Entry check: ONLY Quant, NEVER Verbal, NEVER QC
+                // Numeric Entry check: MUST require explicit numeric markers. NEVER use dummy options alone!
                 const isNumericEntry =
                   !isQC &&
                   currentQuestion?.subject === "Quant" &&
-                  (currentQuestion?.answer_format === "NUMERIC_ENTRY" ||
-                    currentQuestion?.answer_format === "TEXT_INPUT" ||
-                    currentQuestion?.question_type === "NUMERIC_ENTRY" ||
-                    currentQuestion?.question_type === "FRACTION" ||
-                    currentQuestion?.question_text?.includes("(NE)") ||
-                    !currentQuestion?.options ||
-                    currentQuestion.options.length === 0 ||
-                    hasDummyOptions);
+                  (fmtUpper === "NUMERIC_ENTRY" ||
+                    fmtUpper === "TEXT_INPUT" ||
+                    typeUpper === "NUMERIC_ENTRY" ||
+                    typeUpper === "FRACTION" ||
+                    catUpper.includes("NUMERIC ENTRY") ||
+                    textUpper.includes("(NE)") ||
+                    (!currentQuestion?.options || currentQuestion.options.length === 0));
 
                 const isSentenceEquivalence =
                   currentQuestion?.subject === "Verbal" &&
-                  (currentQuestion?.question_type === "SENTENCE_EQUIVALENCE" ||
-                    currentQuestion?.category?.toLowerCase().includes("sentence equivalence") ||
-                    (currentQuestion?.options?.length === 6 &&
-                      (currentQuestion?.is_multi_answer === true || currentQuestion?.answer_format === "MULTI_CHOICE")));
+                  (typeUpper === "SENTENCE_EQUIVALENCE" || catUpper.includes("SENTENCE EQUIVALENCE"));
 
                 const isMultiAnswer =
                   !isQC &&
-                  (currentQuestion?.is_multi_answer === true ||
-                    currentQuestion?.answer_format === "MULTI_CHOICE" ||
+                  !isNumericEntry &&
+                  (typeUpper === "MULTIPLE_CHOICE_MULTI" ||
+                    typeUpper === "SELECT_MANY" ||
                     isSentenceEquivalence ||
-                    currentQuestion?.question_type === "MULTIPLE_CHOICE_MULTI" ||
-                    currentQuestion?.question_type === "SELECT_MANY");
+                    (fmtUpper === "MULTI_CHOICE" && typeUpper !== "MULTIPLE_CHOICE_SINGLE"));
 
                 const formatOptionText = (label: string, text: string): string => {
                   if (!text) return `Option ${label}`;

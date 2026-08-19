@@ -112,20 +112,34 @@ func handleGetImage(c *fiber.Ctx) error {
 		}
 	}
 
-	// Try candidate object keys in MinIO (handling missing extensions, spaces vs underscores)
+	// Normalize filename
+	filename = strings.TrimPrefix(filename, "/api/images/")
+	filename = strings.TrimPrefix(filename, "api/images/")
+	cleanBase := filename
+	if idx := strings.LastIndex(cleanBase, "."); idx > 0 {
+		cleanBase = cleanBase[:idx]
+	}
+
+	// Try candidate object keys in MinIO (handling missing extensions, uppercase/lowercase, hyphens vs underscores)
 	candidates := []string{
 		filename,
-		filename + ".jpg",
-		filename + ".png",
-		filename + ".jpeg",
-		filename + ".svg",
-		filename + ".webp",
-		strings.ReplaceAll(filename, "_", " ") + ".jpg",
-		strings.ReplaceAll(filename, " ", "_") + ".jpg",
-		strings.ReplaceAll(filename, "_", " ") + ".png",
-		strings.ReplaceAll(filename, " ", "_") + ".png",
+		cleanBase + ".png",
+		cleanBase + ".jpg",
+		cleanBase + ".jpeg",
+		cleanBase + ".svg",
+		cleanBase + ".webp",
+		strings.ToLower(filename),
+		strings.ToUpper(filename),
 		strings.ReplaceAll(filename, "_", " "),
 		strings.ReplaceAll(filename, " ", "_"),
+		strings.ReplaceAll(filename, "-", "_"),
+		strings.ReplaceAll(filename, "_", "-"),
+		strings.ReplaceAll(cleanBase, "_", " ") + ".png",
+		strings.ReplaceAll(cleanBase, " ", "_") + ".png",
+		strings.ReplaceAll(cleanBase, "_", " ") + ".jpg",
+		strings.ReplaceAll(cleanBase, " ", "_") + ".jpg",
+		strings.ReplaceAll(cleanBase, "-", "_") + ".png",
+		strings.ReplaceAll(cleanBase, "-", "_") + ".jpg",
 	}
 
 	var matchedStat minio.ObjectInfo
@@ -136,8 +150,26 @@ func handleGetImage(c *fiber.Ctx) error {
 		if err == nil && stat.Size > 0 {
 			matchedStat = stat
 			matchedKey = cand
-			fmt.Printf("[MinIO] Found match for '%s' -> '%s' (%d bytes)\n", filename, matchedKey, stat.Size)
+			fmt.Printf("[MinIO] Found exact match for '%s' -> '%s' (%d bytes)\n", filename, matchedKey, stat.Size)
 			break
+		}
+	}
+
+	// Dynamic prefix fallback search: list objects in MinIO bucket if exact match fails
+	if matchedKey == "" {
+		objectCh := minioClient.ListObjects(c.Context(), MinioBucket, minio.ListObjectsOptions{Recursive: true})
+		for obj := range objectCh {
+			if obj.Err != nil {
+				continue
+			}
+			objLower := strings.ToLower(obj.Key)
+			fnLower := strings.ToLower(cleanBase)
+			if strings.Contains(objLower, fnLower) && obj.Size > 0 {
+				matchedKey = obj.Key
+				matchedStat = obj
+				fmt.Printf("[MinIO] Found fuzzy list match for '%s' -> '%s' (%d bytes)\n", filename, matchedKey, obj.Size)
+				break
+			}
 		}
 	}
 

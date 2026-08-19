@@ -91,11 +91,13 @@ type QuestionRequest struct {
 	Level          string           `json:"level"`
 	QuestionType   string           `json:"question_type"`
 	AnswerFormat   string           `json:"answer_format"`
+	IsMultiAnswer  bool             `json:"is_multi_answer"`
 	QuestionText   string           `json:"question_text"`
 	Passage        string           `json:"passage"`
 	Options        []QuestionOption `json:"options"`
 	CorrectAnswers []CorrectAnswer  `json:"correct_answers"`
 	Explanation    string           `json:"explanation"`
 	Images         []QuestionImage  `json:"images"`
+	HasAnswerImage bool             `json:"has_answer_image"`
 	ImageStorage   string           `json:"image_storage"`
 }

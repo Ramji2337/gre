@@ -260,8 +260,11 @@ func handleCreateQuestion(c *fiber.Ctx) error {
 		req.AnswerFormat = "SINGLE_CHOICE"
 	}
 	if req.ImageStorage == "" {
-		req.ImageStorage = "S3"
+		req.ImageStorage = "MINIO"
 	}
+
+	isMultiAnswer := req.IsMultiAnswer || req.QuestionType == "MULTIPLE_CHOICE_MULTI" || req.QuestionType == "SELECT_MANY" || req.QuestionType == "SENTENCE_EQUIVALENCE" || req.AnswerFormat == "MULTI_CHOICE"
+	hasAnswerImage := req.HasAnswerImage || len(req.Images) > 0
 
 	now := time.Now()
 	questionID := fmt.Sprintf("MAN_%s_%d", req.Subject, now.UnixNano())
@@ -273,14 +276,14 @@ func handleCreateQuestion(c *fiber.Ctx) error {
 		Level:          req.Level,
 		QuestionType:   req.QuestionType,
 		AnswerFormat:   req.AnswerFormat,
-		IsMultiAnswer:  false,
+		IsMultiAnswer:  isMultiAnswer,
 		QuestionText:   req.QuestionText,
 		Passage:        req.Passage,
 		Options:        req.Options,
 		CorrectAnswers: req.CorrectAnswers,
 		Explanation:    req.Explanation,
 		Images:         req.Images,
-		HasAnswerImage: false,
+		HasAnswerImage: hasAnswerImage,
 		ImageStorage:   req.ImageStorage,
 		IsActive:       true,
 		CreatedAt:      now,
@@ -324,6 +327,16 @@ func handleUpdateQuestion(c *fiber.Ctx) error {
 	if req.QuestionType != "" {
 		update["question_type"] = req.QuestionType
 	}
+	if req.AnswerFormat != "" {
+		update["answer_format"] = req.AnswerFormat
+	}
+	update["is_multi_answer"] = req.IsMultiAnswer || req.QuestionType == "MULTIPLE_CHOICE_MULTI" || req.QuestionType == "SELECT_MANY" || req.QuestionType == "SENTENCE_EQUIVALENCE" || req.AnswerFormat == "MULTI_CHOICE"
+	update["has_answer_image"] = req.HasAnswerImage || len(req.Images) > 0
+	if req.ImageStorage != "" {
+		update["image_storage"] = req.ImageStorage
+	} else {
+		update["image_storage"] = "MINIO"
+	}
 	if req.QuestionText != "" {
 		update["question_text"] = req.QuestionText
 	}
@@ -357,6 +370,13 @@ func handleUpdateQuestion(c *fiber.Ctx) error {
 	).Decode(&question)
 	if err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "Question not found"})
+	}
+
+	for j := range question.Images {
+		storage := strings.ToLower(question.Images[j].Storage)
+		if storage == "" || storage == "minio" || storage == "s3" {
+			question.Images[j].ImageName = minioImageURL(question.Images[j].ImageName)
+		}
 	}
 
 	return c.JSON(fiber.Map{"question": question})
