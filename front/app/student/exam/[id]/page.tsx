@@ -983,12 +983,17 @@ export default function ExamPlayerPage() {
                     currentQuestion.answer_format === "NUMERIC_ENTRY" ||
                     currentQuestion.question_type === "NUMERIC_ENTRY" ||
                     currentQuestion.question_type === "FRACTION";
+
+                  const typeUpper = (currentQuestion?.question_type || "").toUpperCase();
+                  const catUpper = (currentQuestion?.category || "").toUpperCase();
+                  const isSE = typeUpper === "SENTENCE_EQUIVALENCE" || catUpper.includes("SENTENCE EQUIVALENCE");
+
                   const isMultiAnswer =
                     currentQuestion.is_multi_answer === true ||
                     currentQuestion.answer_format === "MULTI_CHOICE" ||
-                    currentQuestion.question_type === "SENTENCE_EQUIVALENCE" ||
-                    currentQuestion.question_type === "MULTIPLE_CHOICE_MULTI" ||
-                    currentQuestion.question_type === "SELECT_MANY";
+                    isSE ||
+                    typeUpper === "MULTIPLE_CHOICE_MULTI" ||
+                    typeUpper === "SELECT_MANY";
 
                   if (isAWA) {
                     return (
@@ -1004,10 +1009,17 @@ export default function ExamPlayerPage() {
                       </span>
                     );
                   }
+                  if (isSE) {
+                    return (
+                      <span className="text-xs bg-purple-100 text-purple-800 border border-purple-200 px-2.5 py-0.5 rounded-full font-semibold">
+                        Select Exactly 2 Answers (Sentence Equivalence)
+                      </span>
+                    );
+                  }
                   if (isMultiAnswer) {
                     return (
                       <span className="text-xs bg-purple-100 text-purple-800 border border-purple-200 px-2.5 py-0.5 rounded-full font-semibold">
-                        Select All That Apply (Square Checkboxes)
+                        Select One or More Answers (Square Checkboxes)
                       </span>
                     );
                   }
@@ -1216,9 +1228,17 @@ export default function ExamPlayerPage() {
                   );
                 }
 
-                // Check for 2-Blank or 3-Blank Text Completion grouping
+                const hasMultiBlankMarkers =
+                  /\(blank\s*i{1,3}\)/i.test(textUpper) ||
+                  /\[blank\s*i{1,3}\]/i.test(textUpper) ||
+                  /\(blank\s*[1-3]\)/i.test(textUpper) ||
+                  /blank\s*\(i\)/i.test(textUpper) ||
+                  /blank\s*\(ii\)/i.test(textUpper);
+
+                // Check for 2-Blank or 3-Blank Text Completion grouping (Requires explicit TC type, category, or multi-blank markers)
                 const isTextCompletionBlanks =
                   currentQuestion.subject === "Verbal" &&
+                  (typeUpper === "TEXT_COMPLETION" || catUpper.includes("TEXT COMPLETION") || hasMultiBlankMarkers) &&
                   (currentQuestion.options?.length === 6 || currentQuestion.options?.length === 9) &&
                   !isSentenceEquivalence;
 
