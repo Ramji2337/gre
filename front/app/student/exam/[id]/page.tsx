@@ -1242,7 +1242,10 @@ export default function ExamPlayerPage() {
                 const displayOptions = isQC ? defaultQCOptions : (currentQuestion.options || []);
 
                 const correctCount = (currentQuestion?.correct_answers || []).length;
+                // SE is always max-2 multi-select; other multi gets correctCount or 3
                 const maxChoices = isSE ? 2 : (correctCount > 1 ? correctCount : 3);
+                // For rendering purposes, SE also behaves as a multi-select (exactly 2)
+                const isEffectiveMulti = isSE || isMultiAnswer;
                 const currentSelectedArr = (answers[currentQuestion.question_id] || "")
                   .split(",")
                   .map((s) => s.trim())
@@ -1250,23 +1253,27 @@ export default function ExamPlayerPage() {
 
                 return (
                   <div className="space-y-2.5">
-                    {isMultiAnswer && (
+                    {isEffectiveMulti && (
                       <div className="flex items-center justify-between text-xs font-semibold text-slate-500 px-1 mb-1">
-                        <span>Selection Limit: Max {maxChoices} choices</span>
+                        <span>
+                          {isSE
+                            ? "Select Exactly 2 Answers"
+                            : `Selection Limit: Max ${maxChoices} choices`}
+                        </span>
                         <span className="font-mono text-blue-600">Selected: {currentSelectedArr.length}/{maxChoices}</span>
                       </div>
                     )}
                     {displayOptions.map((opt: any, i: number) => {
-                      const isSelected = isMultiAnswer
+                      const isSelected = isEffectiveMulti
                         ? currentSelectedArr.includes(opt.label)
                         : answers[currentQuestion.question_id] === opt.label;
 
                       return (
                         <button
                           key={i}
-                          onClick={() => handleAnswerSelect(currentQuestion.question_id, opt.label, isMultiAnswer)}
+                          onClick={() => handleAnswerSelect(currentQuestion.question_id, opt.label, isEffectiveMulti)}
                           className={`w-full text-left p-4 transition flex items-start gap-3 border-2 ${
-                            isMultiAnswer ? "rounded-xl" : "rounded-full"
+                            isEffectiveMulti ? "rounded-xl" : "rounded-full"
                           } ${
                             isSelected
                               ? "border-blue-600 bg-blue-50/80 text-blue-950 font-medium shadow-sm"
@@ -1275,7 +1282,7 @@ export default function ExamPlayerPage() {
                         >
                           <span
                             className={`w-6 h-6 flex items-center justify-center text-xs font-bold flex-shrink-0 transition ${
-                              isMultiAnswer ? "rounded-md" : "rounded-full"
+                              isEffectiveMulti ? "rounded-md" : "rounded-full"
                             } ${
                               isSelected ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-600 border border-slate-300"
                             }`}
