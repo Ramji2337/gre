@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Next.js
+front/.next/
+front/node_modules/
+out/
+build/
+
+# Go Binaries & Temp
+gobackend/gre-backend
+gobackend/gre-server
+*.exe
+*.out
+
+# Zips and Screenshots
+*.zip
+Screenshot*.png
+*.png
