@@ -974,60 +974,24 @@ export default function ExamPlayerPage() {
                   Question {currentQIdx + 1} of {sectionQuestions.length}
                 </span>
                 {(() => {
-                  const isAWA =
-                    currentSection.subject === "AWA" ||
-                    currentQuestion.subject === "AWA" ||
-                    currentQuestion.question_type === "AWA" ||
-                    currentQuestion.answer_format === "ESSAY";
-                  const isNumericEntry =
-                    currentQuestion.answer_format === "NUMERIC_ENTRY" ||
-                    currentQuestion.question_type === "NUMERIC_ENTRY" ||
-                    currentQuestion.question_type === "FRACTION";
+                  const qt  = (currentQuestion?.question_type || "").toUpperCase();
+                  const fmt = (currentQuestion?.answer_format  || "").toUpperCase();
+                  const isAWA    = currentSection.subject === "AWA" || qt === "AWA" || fmt === "ESSAY";
+                  const isNE     = qt === "NUMERIC_ENTRY" || qt === "FRACTION" || fmt === "NUMERIC_ENTRY";
+                  const isQC     = qt === "QUANTITATIVE_COMPARISON";
+                  const isSE     = qt === "SENTENCE_EQUIVALENCE";
+                  const isTC     = qt === "TEXT_COMPLETION";
+                  const isMulti  = !isQC && !isNE && !isSE && !isTC &&
+                    (currentQuestion.is_multi_answer === true ||
+                     qt === "MULTIPLE_CHOICE_MULTI" || qt === "MULTIPLE_CHOICE_MULTIPLE" || qt === "SELECT_MANY");
 
-                  const typeUpper = (currentQuestion?.question_type || "").toUpperCase();
-                  const catUpper = (currentQuestion?.category || "").toUpperCase();
-                  const isSE = typeUpper === "SENTENCE_EQUIVALENCE" || catUpper.includes("SENTENCE EQUIVALENCE");
-
-                  const isMultiAnswer =
-                    currentQuestion.is_multi_answer === true ||
-                    currentQuestion.answer_format === "MULTI_CHOICE" ||
-                    isSE ||
-                    typeUpper === "MULTIPLE_CHOICE_MULTI" ||
-                    typeUpper === "SELECT_MANY";
-
-                  if (isAWA) {
-                    return (
-                      <span className="text-xs bg-indigo-100 text-indigo-800 border border-indigo-200 px-2.5 py-0.5 rounded-full font-semibold">
-                        Essay Response (Analytical Writing)
-                      </span>
-                    );
-                  }
-                  if (isNumericEntry) {
-                    return (
-                      <span className="text-xs bg-amber-100 text-amber-800 border border-amber-200 px-2.5 py-0.5 rounded-full font-semibold">
-                        Numeric Entry Box
-                      </span>
-                    );
-                  }
-                  if (isSE) {
-                    return (
-                      <span className="text-xs bg-purple-100 text-purple-800 border border-purple-200 px-2.5 py-0.5 rounded-full font-semibold">
-                        Select Exactly 2 Answers (Sentence Equivalence)
-                      </span>
-                    );
-                  }
-                  if (isMultiAnswer) {
-                    return (
-                      <span className="text-xs bg-purple-100 text-purple-800 border border-purple-200 px-2.5 py-0.5 rounded-full font-semibold">
-                        Select One or More Answers (Square Checkboxes)
-                      </span>
-                    );
-                  }
-                  return (
-                    <span className="text-xs bg-slate-200 text-slate-700 px-2.5 py-0.5 rounded-full font-medium">
-                      Select One Answer (Oval Buttons)
-                    </span>
-                  );
+                  if (isAWA)   return <span className="text-xs bg-indigo-100 text-indigo-800 border border-indigo-200 px-2.5 py-0.5 rounded-full font-semibold">Essay Response (Analytical Writing)</span>;
+                  if (isNE)    return <span className="text-xs bg-amber-100 text-amber-800 border border-amber-200 px-2.5 py-0.5 rounded-full font-semibold">Numeric Entry Box</span>;
+                  if (isQC)    return <span className="text-xs bg-sky-100 text-sky-800 border border-sky-200 px-2.5 py-0.5 rounded-full font-semibold">Quantitative Comparison</span>;
+                  if (isSE)    return <span className="text-xs bg-purple-100 text-purple-800 border border-purple-200 px-2.5 py-0.5 rounded-full font-semibold">Select Exactly 2 Answers (Sentence Equivalence)</span>;
+                  if (isTC)    return <span className="text-xs bg-teal-100 text-teal-800 border border-teal-200 px-2.5 py-0.5 rounded-full font-semibold">Text Completion (Select 1 per Blank)</span>;
+                  if (isMulti) return <span className="text-xs bg-purple-100 text-purple-800 border border-purple-200 px-2.5 py-0.5 rounded-full font-semibold">Select One or More Answers (Square Checkboxes)</span>;
+                  return <span className="text-xs bg-slate-200 text-slate-700 px-2.5 py-0.5 rounded-full font-medium">Select One Answer (Oval Buttons)</span>;
                 })()}
                 {currentSection.subject === "Quant" && (
                   <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-medium">Quant</span>
@@ -1129,54 +1093,26 @@ export default function ExamPlayerPage() {
                   currentQuestion?.question_type === "AWA" ||
                   currentQuestion?.answer_format === "ESSAY";
 
-                const fmtUpper = (currentQuestion?.answer_format || "").toUpperCase();
-                const typeUpper = (currentQuestion?.question_type || "").toUpperCase();
-                const catUpper = (currentQuestion?.category || "").toUpperCase();
-                const textUpper = (currentQuestion?.question_text || "").toUpperCase();
+                const qt  = (currentQuestion?.question_type  || "").toUpperCase();
+                const fmt = (currentQuestion?.answer_format   || "").toUpperCase();
 
-                // Quantitative Comparison (QC) check
-                const isQC =
-                  currentQuestion?.subject === "Quant" &&
-                  (textUpper.includes("QUANTITY A") ||
-                    catUpper.includes("QUANTITATIVE COMPARISON") ||
-                    typeUpper.includes("QUANTITATIVE COMPARISON"));
-
-                const defaultQCOptions = [
-                  { label: "A", text: "Quantity A is greater." },
-                  { label: "B", text: "Quantity B is greater." },
-                  { label: "C", text: "The two quantities are equal." },
-                  { label: "D", text: "The relationship cannot be determined from the information given." },
-                ];
-
-                // Numeric Entry check: MUST require explicit numeric markers. NEVER use dummy options alone!
-                const isNumericEntry =
-                  !isQC &&
-                  currentQuestion?.subject === "Quant" &&
-                  (fmtUpper === "NUMERIC_ENTRY" ||
-                    fmtUpper === "TEXT_INPUT" ||
-                    typeUpper === "NUMERIC_ENTRY" ||
-                    typeUpper === "FRACTION" ||
-                    catUpper.includes("NUMERIC ENTRY") ||
-                    textUpper.includes("(NE)") ||
-                    (!currentQuestion?.options || currentQuestion.options.length === 0));
-
-                const isSentenceEquivalence =
-                  currentQuestion?.subject === "Verbal" &&
-                  (typeUpper === "SENTENCE_EQUIVALENCE" || catUpper.includes("SENTENCE EQUIVALENCE"));
-
-                const isMultiAnswer =
-                  !isQC &&
-                  !isNumericEntry &&
-                  (typeUpper === "MULTIPLE_CHOICE_MULTI" ||
-                    typeUpper === "SELECT_MANY" ||
-                    isSentenceEquivalence ||
-                    (fmtUpper === "MULTI_CHOICE" && typeUpper !== "MULTIPLE_CHOICE_SINGLE"));
+                // Derived flags — trust the DB values set by the migration script
+                const isQC             = qt === "QUANTITATIVE_COMPARISON";
+                const isNumericEntry   = qt === "NUMERIC_ENTRY" || qt === "FRACTION" || fmt === "NUMERIC_ENTRY";
+                const isSE             = qt === "SENTENCE_EQUIVALENCE";
+                const isTextCompletion = qt === "TEXT_COMPLETION";
+                const isMultiAnswer    = !isQC && !isNumericEntry && !isSE && !isTextCompletion &&
+                  (currentQuestion?.is_multi_answer === true ||
+                   qt === "MULTIPLE_CHOICE_MULTI" ||
+                   qt === "MULTIPLE_CHOICE_MULTIPLE" ||
+                   qt === "SELECT_MANY" ||
+                   fmt === "MULTI_CHOICE");
 
                 const formatOptionText = (label: string, text: string): string => {
                   if (!text) return `Option ${label}`;
-                  const prefixRegex = new RegExp(`^(Option\\s+)?${label}[:\\.\\s-]+`, "i");
+                  const prefixRegex = new RegExp(`^(Option\\s+)?${label}[\\.\\s:-]+`, "i");
                   let cleaned = text.replace(prefixRegex, "").trim();
-                  cleaned = cleaned.replace(/^[\.\•\-\:\,]\s*/, "").trim();
+                  cleaned = cleaned.replace(/^[.•\-:,]\s*/, "").trim();
                   if (!cleaned || cleaned.toLowerCase() === `option ${label.toLowerCase()}`) {
                     return `Option ${label}`;
                   }
@@ -1228,19 +1164,11 @@ export default function ExamPlayerPage() {
                   );
                 }
 
-                const hasMultiBlankMarkers =
-                  /\(blank\s*i{1,3}\)/i.test(textUpper) ||
-                  /\[blank\s*i{1,3}\]/i.test(textUpper) ||
-                  /\(blank\s*[1-3]\)/i.test(textUpper) ||
-                  /blank\s*\(i\)/i.test(textUpper) ||
-                  /blank\s*\(ii\)/i.test(textUpper);
-
-                // Check for 2-Blank or 3-Blank Text Completion grouping (Requires explicit TC type, category, or multi-blank markers)
+                // 2-blank / 3-blank Text Completion — trust DB type=TEXT_COMPLETION set by migration
                 const isTextCompletionBlanks =
+                  isTextCompletion &&
                   currentQuestion.subject === "Verbal" &&
-                  (typeUpper === "TEXT_COMPLETION" || catUpper.includes("TEXT COMPLETION") || hasMultiBlankMarkers) &&
-                  (currentQuestion.options?.length === 6 || currentQuestion.options?.length === 9) &&
-                  !isSentenceEquivalence;
+                  (currentQuestion.options?.length === 6 || currentQuestion.options?.length === 9);
 
                 if (isTextCompletionBlanks) {
                   const optionsPerBlank = 3;
@@ -1303,6 +1231,12 @@ export default function ExamPlayerPage() {
                 }
 
                 // Quantitative Comparison options or default options
+                const defaultQCOptions = [
+                  { label: "A", text: "Quantity A is greater." },
+                  { label: "B", text: "Quantity B is greater." },
+                  { label: "C", text: "The two quantities are equal." },
+                  { label: "D", text: "The relationship cannot be determined from the information given." },
+                ];
                 const displayOptions = isQC ? defaultQCOptions : (currentQuestion.options || []);
 
                 return displayOptions.map((opt: any, i: number) => {

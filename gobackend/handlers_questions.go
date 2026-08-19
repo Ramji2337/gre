@@ -263,7 +263,7 @@ func handleCreateQuestion(c *fiber.Ctx) error {
 		req.ImageStorage = "MINIO"
 	}
 
-	isMultiAnswer := req.IsMultiAnswer || req.QuestionType == "MULTIPLE_CHOICE_MULTI" || req.QuestionType == "SELECT_MANY" || req.QuestionType == "SENTENCE_EQUIVALENCE" || req.AnswerFormat == "MULTI_CHOICE"
+	isMultiAnswer := req.IsMultiAnswer || req.QuestionType == "MULTIPLE_CHOICE_MULTI" || req.QuestionType == "MULTIPLE_CHOICE_MULTIPLE" || req.QuestionType == "SELECT_MANY" || req.QuestionType == "SENTENCE_EQUIVALENCE" || req.AnswerFormat == "MULTI_CHOICE"
 	hasAnswerImage := req.HasAnswerImage || len(req.Images) > 0
 
 	now := time.Now()
@@ -330,7 +330,7 @@ func handleUpdateQuestion(c *fiber.Ctx) error {
 	if req.AnswerFormat != "" {
 		update["answer_format"] = req.AnswerFormat
 	}
-	update["is_multi_answer"] = req.IsMultiAnswer || req.QuestionType == "MULTIPLE_CHOICE_MULTI" || req.QuestionType == "SELECT_MANY" || req.QuestionType == "SENTENCE_EQUIVALENCE" || req.AnswerFormat == "MULTI_CHOICE"
+	update["is_multi_answer"] = req.IsMultiAnswer || req.QuestionType == "MULTIPLE_CHOICE_MULTI" || req.QuestionType == "MULTIPLE_CHOICE_MULTIPLE" || req.QuestionType == "SELECT_MANY" || req.QuestionType == "SENTENCE_EQUIVALENCE" || req.AnswerFormat == "MULTI_CHOICE"
 	update["has_answer_image"] = req.HasAnswerImage || len(req.Images) > 0
 	if req.ImageStorage != "" {
 		update["image_storage"] = req.ImageStorage
