@@ -978,14 +978,21 @@ export default function ExamPlayerPage() {
                 {(() => {
                   const qt  = (currentQuestion?.question_type || "").toUpperCase();
                   const fmt = (currentQuestion?.answer_format  || "").toUpperCase();
-                  const isAWA    = currentSection.subject === "AWA" || qt === "AWA" || fmt === "ESSAY";
+                  const correctCount = (currentQuestion?.correct_answers || []).length;
+
+                  const isAWA    = currentSection?.subject === "AWA" || currentQuestion?.subject === "AWA" || qt === "AWA" || fmt === "ESSAY";
                   const isNE     = qt === "NUMERIC_ENTRY" || qt === "FRACTION" || fmt === "NUMERIC_ENTRY";
                   const isQC     = qt === "QUANTITATIVE_COMPARISON";
-                  const isSE     = qt === "SENTENCE_EQUIVALENCE";
-                  const isTC     = qt === "TEXT_COMPLETION";
+
+                  // Sentence Equivalence: 6 options in Verbal OR explicit SENTENCE_EQUIVALENCE type
+                  const isSE     = qt === "SENTENCE_EQUIVALENCE" || (currentQuestion?.subject === "Verbal" && currentQuestion?.options?.length === 6 && !qt.includes("TEXT_COMPLETION"));
+
+                  // Text Completion: explicit type OR options length 3, 6, 9 in Verbal
+                  const isTC     = qt === "TEXT_COMPLETION" || (currentQuestion?.subject === "Verbal" && (currentQuestion?.options?.length === 3 || currentQuestion?.options?.length === 6 || currentQuestion?.options?.length === 9) && !isSE);
+
                   const isMulti  = !isQC && !isNE && !isSE && !isTC &&
-                    (currentQuestion.is_multi_answer === true ||
-                     qt === "MULTIPLE_CHOICE_MULTI" || qt === "MULTIPLE_CHOICE_MULTIPLE" || qt === "SELECT_MANY");
+                    (currentQuestion?.is_multi_answer === true || correctCount > 1 ||
+                     qt === "MULTIPLE_CHOICE_MULTI" || qt === "MULTIPLE_CHOICE_MULTIPLE" || qt === "SELECT_MANY" || fmt === "MULTI_CHOICE");
 
                   if (isAWA)   return <span className="text-xs bg-indigo-100 text-indigo-800 border border-indigo-200 px-2.5 py-0.5 rounded-full font-semibold">Essay Response (Analytical Writing)</span>;
                   if (isNE)    return <span className="text-xs bg-amber-100 text-amber-800 border border-amber-200 px-2.5 py-0.5 rounded-full font-semibold">Numeric Entry Box</span>;
@@ -1097,14 +1104,16 @@ export default function ExamPlayerPage() {
 
                 const qt  = (currentQuestion?.question_type  || "").toUpperCase();
                 const fmt = (currentQuestion?.answer_format   || "").toUpperCase();
+                const correctCount = (currentQuestion?.correct_answers || []).length;
 
-                // Derived flags — trust the DB values set by the migration script
+                // Derived flags with structural fallback
                 const isQC             = qt === "QUANTITATIVE_COMPARISON";
                 const isNumericEntry   = qt === "NUMERIC_ENTRY" || qt === "FRACTION" || fmt === "NUMERIC_ENTRY";
-                const isSE             = qt === "SENTENCE_EQUIVALENCE";
-                const isTextCompletion = qt === "TEXT_COMPLETION";
+                const isSE             = qt === "SENTENCE_EQUIVALENCE" || (currentQuestion?.subject === "Verbal" && currentQuestion?.options?.length === 6 && !qt.includes("TEXT_COMPLETION"));
+                const isTextCompletion = qt === "TEXT_COMPLETION" || (currentQuestion?.subject === "Verbal" && (currentQuestion?.options?.length === 3 || currentQuestion?.options?.length === 6 || currentQuestion?.options?.length === 9) && !isSE);
                 const isMultiAnswer    = !isQC && !isNumericEntry && !isSE && !isTextCompletion &&
                   (currentQuestion?.is_multi_answer === true ||
+                   correctCount > 1 ||
                    qt === "MULTIPLE_CHOICE_MULTI" ||
                    qt === "MULTIPLE_CHOICE_MULTIPLE" ||
                    qt === "SELECT_MANY" ||
@@ -1241,7 +1250,6 @@ export default function ExamPlayerPage() {
                 ];
                 const displayOptions = isQC ? defaultQCOptions : (currentQuestion.options || []);
 
-                const correctCount = (currentQuestion?.correct_answers || []).length;
                 // SE is always max-2 multi-select; other multi gets correctCount or 3
                 const maxChoices = isSE ? 2 : (correctCount > 1 ? correctCount : 3);
                 // For rendering purposes, SE also behaves as a multi-select (exactly 2)
