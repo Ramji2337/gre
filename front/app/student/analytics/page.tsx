@@ -415,8 +415,8 @@ export default function AnalyticsPage() {
         </div>
         <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
           <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold">Overall Accuracy</p>
-          <p className="text-3xl font-bold text-gray-900 mt-2">{agg.overall_accuracy.toFixed(1)}%</p>
-          <p className="text-xs text-gray-400 mt-1">{agg.total_correct}/{agg.total_attempted} correct</p>
+          <p className="text-3xl font-bold text-gray-900 mt-2">{(agg?.overall_accuracy ?? 0).toFixed(1)}%</p>
+          <p className="text-xs text-gray-400 mt-1">{agg?.total_correct ?? 0}/{agg?.total_attempted ?? 0} correct</p>
         </div>
         <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
           <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold">Tests Completed</p>

@@ -178,6 +178,12 @@ export default function ExamPlayerPage() {
   const [showCalculator, setShowCalculator] = useState(false);
   const [violationCount, setViolationCount] = useState(0);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
+
+  const answersRef = useRef(answers);
+  answersRef.current = answers;
+
+  const currentSectionIdxRef = useRef(currentSectionIdx);
+  currentSectionIdxRef.current = currentSectionIdx;
   const [transitionMsg, setTransitionMsg] = useState("");
   const [fullscreenWarning, setFullscreenWarning] = useState(false);
   const [lastViolation, setLastViolation] = useState<{ type: string; label: string } | null>(null);
@@ -222,17 +228,43 @@ export default function ExamPlayerPage() {
     [allocationId]
   );
 
-  // BeforeUnload warning during active exam
+  // BeforeUnload & visibilitychange answer flush during active exam
   useEffect(() => {
     if (phase !== "exam") return;
+
+    const flushAnswers = () => {
+      if (typeof window === "undefined") return;
+      const payload = JSON.stringify({
+        answers: answersRef.current,
+        section_index: currentSectionIdxRef.current,
+      });
+      const endpoint = `/api/student/tests/${allocationId}/flush-answers`;
+      if (navigator.sendBeacon) {
+        const blob = new Blob([payload], { type: "application/json" });
+        navigator.sendBeacon(endpoint, blob);
+      }
+    };
+
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      flushAnswers();
       e.preventDefault();
       e.returnValue = "Your exam is currently in progress. Leaving this page will NOT pause your timer!";
       return e.returnValue;
     };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        flushAnswers();
+      }
+    };
+
     window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [phase]);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [phase, allocationId]);
 
   // Start test and fetch questions with session timer restoration
   useEffect(() => {
@@ -1044,9 +1076,7 @@ export default function ExamPlayerPage() {
                           className="max-w-full max-h-96 object-contain rounded-lg border border-slate-300 shadow-sm"
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
-                            const parent = target.closest(".image-box-container") as HTMLElement;
-                            target.style.display = "none";
-                            if (parent) parent.style.display = "none";
+                            target.src = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="360" height="200" viewBox="0 0 360 200"><rect width="360" height="200" fill="%23f8fafc" stroke="%23cbd5e1" stroke-width="2" rx="10"/><path d="M140 90L165 120L185 100L220 140H140V90Z" fill="%23cbd5e1"/><circle cx="210" cy="80" r="12" fill="%23cbd5e1"/><text x="180" y="165" font-family="sans-serif" font-size="12" font-weight="600" fill="%2364748b" text-anchor="middle">Figure Diagram Asset</text></svg>`;
                           }}
                         />
                       </div>

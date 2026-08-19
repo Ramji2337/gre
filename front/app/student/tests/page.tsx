@@ -25,7 +25,7 @@ export default function AvailableTestsPage() {
   const router = useRouter();
   const [tests, setTests] = useState<AvailableTest[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<"ALL" | "SCHEDULED" | "IN_PROGRESS">("ALL");
+  const [filter, setFilter] = useState<"ALL" | "SCHEDULED" | "IN_PROGRESS" | "EXPIRED">("ALL");
   const [search, setSearch] = useState("");
   const [now, setNow] = useState(new Date());
 
@@ -108,7 +108,9 @@ export default function AvailableTestsPage() {
   };
 
   const filteredTests = tests.filter((t) => {
-    if (filter !== "ALL" && t.status !== filter) return false;
+    const expired = isExpired(t);
+    const effectiveStatus = expired || t.status === "EXPIRED" ? "EXPIRED" : t.status;
+    if (filter !== "ALL" && effectiveStatus !== filter) return false;
     if (search) {
       const q = search.toLowerCase();
       if (
@@ -185,6 +187,7 @@ export default function AvailableTestsPage() {
               <option value="ALL">All Statuses</option>
               <option value="SCHEDULED">Scheduled</option>
               <option value="IN_PROGRESS">In Progress</option>
+              <option value="EXPIRED">Expired</option>
             </select>
           </div>
 

@@ -18,7 +18,9 @@ type TestAllocation struct {
 	AllocatedBy    string             `json:"allocated_by" bson:"allocated_by"`
 	AllocatedByID  primitive.ObjectID `json:"allocated_by_id" bson:"allocated_by_id"`
 	ScheduledAt    time.Time          `json:"scheduled_at" bson:"scheduled_at"`
+	EndTime        time.Time          `json:"end_time" bson:"end_time"`
 	ExpiresAt      time.Time          `json:"expires_at" bson:"expires_at"`
+	ExpiredAt      *time.Time         `json:"expired_at,omitempty" bson:"expired_at,omitempty"`
 	QuestionIDs    []string           `json:"question_ids" bson:"question_ids"`
 	Sections       []TestSection      `json:"sections" bson:"sections"`
 	ViolationCount int                `json:"violation_count,omitempty" bson:"violation_count,omitempty"`
@@ -33,6 +35,8 @@ type TestSection struct {
 	Difficulty         string     `json:"difficulty" bson:"difficulty"`
 	QuestionIDs        []string   `json:"question_ids" bson:"question_ids"`
 	DurationMins       int        `json:"duration_mins" bson:"duration_mins"`
+	RemainingTimeSecs  int        `json:"remaining_time_secs,omitempty" bson:"remaining_time_secs,omitempty"`
+	Locked             bool       `json:"locked" bson:"locked"`
 	Score              int        `json:"score,omitempty" bson:"score,omitempty"`
 	TotalQuestions     int        `json:"total_questions,omitempty" bson:"total_questions,omitempty"`
 	IsSelected         bool       `json:"is_selected,omitempty" bson:"is_selected,omitempty"`
@@ -40,6 +44,16 @@ type TestSection struct {
 	SelectedDifficulty string     `json:"selected_difficulty,omitempty" bson:"selected_difficulty,omitempty"`
 	SubmittedAt        *time.Time `json:"submitted_at,omitempty" bson:"submitted_at,omitempty"`
 	StartedAt          *time.Time `json:"started_at,omitempty" bson:"started_at,omitempty"`
+}
+
+type TestViolation struct {
+	ID            primitive.ObjectID `json:"_id" bson:"_id,omitempty"`
+	AllocationID  primitive.ObjectID `json:"allocation_id" bson:"allocation_id"`
+	StudentID     primitive.ObjectID `json:"student_id" bson:"student_id"`
+	ViolationType string             `json:"violation_type" bson:"violation_type"`
+	Details       string             `json:"details" bson:"details"`
+	Severity      string             `json:"severity" bson:"severity"`
+	CreatedAt     time.Time          `json:"created_at" bson:"created_at"`
 }
 
 type AdaptiveSettings struct {

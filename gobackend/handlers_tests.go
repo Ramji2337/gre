@@ -270,13 +270,15 @@ func handleListAllocations(c *fiber.Ctx) error {
 	now := time.Now()
 	for i := range allocations {
 		if allocations[i].Status == "SCHEDULED" {
-			duration := allocations[i].ExpiresAt.Sub(allocations[i].ScheduledAt)
-			noStartDeadline := allocations[i].ScheduledAt.Add(duration / 2)
-			if now.After(noStartDeadline) {
+			deadline := allocations[i].EndTime
+			if deadline.IsZero() {
+				deadline = allocations[i].ScheduledAt.Add(120 * time.Minute)
+			}
+			if now.After(deadline) {
 				allocations[i].Status = "EXPIRED"
 				getCollection("test_allocations").UpdateOne(context.Background(),
 					bson.M{"_id": allocations[i].ID},
-					bson.M{"$set": bson.M{"status": "EXPIRED", "updated_at": now}})
+					bson.M{"$set": bson.M{"status": "EXPIRED", "expired_at": now, "updated_at": now}})
 			}
 		}
 	}
@@ -293,7 +295,7 @@ func handleListAllocations(c *fiber.Ctx) error {
 		"REALLOCATED": 0,
 	}
 
-	countOpts := options.Find().SetProjection(bson.M{"status": 1, "scheduled_at": 1, "expires_at": 1})
+	countOpts := options.Find().SetProjection(bson.M{"status": 1, "scheduled_at": 1, "end_time": 1, "expires_at": 1})
 	countCur, err := getCollection("test_allocations").Find(context.Background(), countFilter, countOpts)
 	if err == nil {
 		defer countCur.Close(context.Background())
@@ -302,9 +304,11 @@ func handleListAllocations(c *fiber.Ctx) error {
 		for _, a := range summaryAllocs {
 			effStatus := a.Status
 			if effStatus == "SCHEDULED" {
-				duration := a.ExpiresAt.Sub(a.ScheduledAt)
-				noStartDeadline := a.ScheduledAt.Add(duration / 2)
-				if now.After(noStartDeadline) {
+				deadline := a.EndTime
+				if deadline.IsZero() {
+					deadline = a.ScheduledAt.Add(120 * time.Minute)
+				}
+				if now.After(deadline) {
 					effStatus = "EXPIRED"
 				}
 			}
@@ -339,13 +343,15 @@ func handleGetAllocation(c *fiber.Ctx) error {
 
 	if alloc.Status == "SCHEDULED" {
 		now := time.Now()
-		duration := alloc.ExpiresAt.Sub(alloc.ScheduledAt)
-		noStartDeadline := alloc.ScheduledAt.Add(duration / 2)
-		if now.After(noStartDeadline) {
+		deadline := alloc.EndTime
+		if deadline.IsZero() {
+			deadline = alloc.ScheduledAt.Add(120 * time.Minute)
+		}
+		if now.After(deadline) {
 			alloc.Status = "EXPIRED"
 			getCollection("test_allocations").UpdateOne(context.Background(),
 				bson.M{"_id": alloc.ID},
-				bson.M{"$set": bson.M{"status": "EXPIRED", "updated_at": now}})
+				bson.M{"$set": bson.M{"status": "EXPIRED", "expired_at": now, "updated_at": now}})
 		}
 	}
 
@@ -368,9 +374,11 @@ func handleCancelAllocation(c *fiber.Ctx) error {
 	effectiveStatus := alloc.Status
 	now := time.Now()
 	if effectiveStatus == "SCHEDULED" {
-		duration := alloc.ExpiresAt.Sub(alloc.ScheduledAt)
-		noStartDeadline := alloc.ScheduledAt.Add(duration / 2)
-		if now.After(noStartDeadline) {
+		deadline := alloc.EndTime
+		if deadline.IsZero() {
+			deadline = alloc.ScheduledAt.Add(120 * time.Minute)
+		}
+		if now.After(deadline) {
 			effectiveStatus = "EXPIRED"
 		}
 	}

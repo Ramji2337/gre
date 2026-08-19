@@ -142,14 +142,29 @@ func handleGetImage(c *fiber.Ctx) error {
 	}
 
 	if matchedKey == "" {
-		fmt.Printf("[MinIO] Image NOT FOUND for '%s'\n", filename)
-		return c.Status(404).JSON(fiber.Map{"error": "Image not found"})
+		fmt.Printf("[MinIO] Image NOT FOUND for '%s' -> Returning SVG fallback asset\n", filename)
+		fallbackSVG := fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" width="400" height="250" viewBox="0 0 400 250" fill="none">
+			<rect width="400" height="250" rx="12" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="2"/>
+			<path d="M160 110L185 140L205 120L240 160H160V110Z" fill="#CBD5E1"/>
+			<circle cx="230" cy="100" r="14" fill="#CBD5E1"/>
+			<text x="200" y="190" font-family="system-ui, sans-serif" font-size="13" font-weight="600" fill="#64748B" text-anchor="middle">Figure Diagram: %s</text>
+		</svg>`, filename)
+		c.Set("Content-Type", "image/svg+xml")
+		c.Set("Cache-Control", "public, max-age=3600")
+		return c.Send([]byte(fallbackSVG))
 	}
 
 	matchedObj, err := minioClient.GetObject(c.Context(), MinioBucket, matchedKey, minio.GetObjectOptions{})
 	if err != nil {
-		fmt.Printf("[MinIO] GetObject error for '%s': %v\n", matchedKey, err)
-		return c.Status(404).JSON(fiber.Map{"error": "Image not found"})
+		fmt.Printf("[MinIO] GetObject error for '%s': %v -> Returning SVG fallback asset\n", matchedKey, err)
+		fallbackSVG := fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" width="400" height="250" viewBox="0 0 400 250" fill="none">
+			<rect width="400" height="250" rx="12" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="2"/>
+			<path d="M160 110L185 140L205 120L240 160H160V110Z" fill="#CBD5E1"/>
+			<circle cx="230" cy="100" r="14" fill="#CBD5E1"/>
+			<text x="200" y="190" font-family="system-ui, sans-serif" font-size="13" font-weight="600" fill="#64748B" text-anchor="middle">Figure Diagram: %s</text>
+		</svg>`, filename)
+		c.Set("Content-Type", "image/svg+xml")
+		return c.Send([]byte(fallbackSVG))
 	}
 	defer matchedObj.Close()
 

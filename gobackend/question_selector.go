@@ -43,8 +43,7 @@ func (qs *QuestionSelector) getSeenQuestionIDs() (map[string]bool, error) {
 func (qs *QuestionSelector) selectFromCollection(colName string, count int, levelFilter string) ([]Question, error) {
 	seenMap, err := qs.getSeenQuestionIDs()
 	if err != nil {
-		log.Printf("Warning: could not fetch seen questions: %v", err)
-		seenMap = make(map[string]bool)
+		return nil, fmt.Errorf("failed to fetch seen question history: %w", err)
 	}
 
 	filter := bson.M{"is_active": true}
