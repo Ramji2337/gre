@@ -1,0 +1,50 @@
+{
+  "timestamp": "2026-08-19T17:03:15.230Z",
+  "total_active_questions": 2389,
+  "subjects": {
+    "Verbal": {
+      "total": 1318,
+      "valid": 1318,
+      "invalid": 0,
+      "types": {
+        "MCQ": 420,
+        "READING_COMPREHENSION": 3,
+        "SENTENCE_EQUIVALENCE": 649,
+        "TEXT_COMPLETION": 246
+      }
+    },
+    "Quant": {
+      "total": 961,
+      "valid": 961,
+      "invalid": 0,
+      "types": {
+        "MCQ": 653,
+        "QUANTITATIVE_COMPARISON": 221,
+        "NUMERIC_ENTRY": 35,
+        "MULTIPLE_CHOICE_MULTI": 52
+      }
+    },
+    "AWA": {
+      "total": 110,
+      "valid": 110,
+      "invalid": 0,
+      "types": {
+        "AWA": 110
+      }
+    }
+  },
+  "question_type_distribution": {
+    "MCQ": 1073,
+    "READING_COMPREHENSION": 3,
+    "SENTENCE_EQUIVALENCE": 649,
+    "TEXT_COMPLETION": 246,
+    "QUANTITATIVE_COMPARISON": 221,
+    "NUMERIC_ENTRY": 35,
+    "MULTIPLE_CHOICE_MULTI": 52,
+    "AWA": 110
+  },
+  "verification_passed": true,
+  "passed_questions_count": 2389,
+  "failed_questions_count": 0,
+  "failed_questions": []
+}

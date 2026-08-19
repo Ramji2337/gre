@@ -28,24 +28,31 @@
         </div>
       </div>
 
-      <!-- Subject Tabs -->
-      <div class="flex items-center bg-slate-900 p-1.5 rounded-xl border border-slate-800 gap-1" id="subject-tabs">
-        <button onclick="setSubject('all')" id="tab-all" class="px-4 py-2 rounded-lg text-xs font-semibold transition bg-indigo-600 text-white shadow-sm flex items-center gap-1.5">
-          <span>All</span>
-          <span id="cnt-all" class="bg-indigo-700/80 px-1.5 py-0.5 rounded text-[10px]">0</span>
+      <!-- Subject Tabs & Download -->
+      <div class="flex flex-wrap items-center gap-3">
+        <button onclick="downloadAllVerifiedJSON()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-3.5 py-2 rounded-xl transition shadow-sm flex items-center gap-1.5 border border-emerald-500/40">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          <span>Download All 2,389 JSON</span>
         </button>
-        <button onclick="setSubject('Verbal')" id="tab-Verbal" class="px-4 py-2 rounded-lg text-xs font-semibold transition text-slate-400 hover:text-slate-200 hover:bg-slate-800 flex items-center gap-1.5">
-          <span>Verbal</span>
-          <span id="cnt-verbal" class="bg-slate-800 px-1.5 py-0.5 rounded text-[10px] text-slate-300">0</span>
-        </button>
-        <button onclick="setSubject('Quant')" id="tab-Quant" class="px-4 py-2 rounded-lg text-xs font-semibold transition text-slate-400 hover:text-slate-200 hover:bg-slate-800 flex items-center gap-1.5">
-          <span>Quantitative</span>
-          <span id="cnt-quant" class="bg-slate-800 px-1.5 py-0.5 rounded text-[10px] text-slate-300">0</span>
-        </button>
-        <button onclick="setSubject('AWA')" id="tab-AWA" class="px-4 py-2 rounded-lg text-xs font-semibold transition text-slate-400 hover:text-slate-200 hover:bg-slate-800 flex items-center gap-1.5">
-          <span>AWA</span>
-          <span id="cnt-awa" class="bg-slate-800 px-1.5 py-0.5 rounded text-[10px] text-slate-300">0</span>
-        </button>
+
+        <div class="flex items-center bg-slate-900 p-1.5 rounded-xl border border-slate-800 gap-1" id="subject-tabs">
+          <button onclick="setSubject('all')" id="tab-all" class="px-4 py-2 rounded-lg text-xs font-semibold transition bg-indigo-600 text-white shadow-sm flex items-center gap-1.5">
+            <span>All</span>
+            <span id="cnt-all" class="bg-indigo-700/80 px-1.5 py-0.5 rounded text-[10px]">0</span>
+          </button>
+          <button onclick="setSubject('Verbal')" id="tab-Verbal" class="px-4 py-2 rounded-lg text-xs font-semibold transition text-slate-400 hover:text-slate-200 hover:bg-slate-800 flex items-center gap-1.5">
+            <span>Verbal</span>
+            <span id="cnt-verbal" class="bg-slate-800 px-1.5 py-0.5 rounded text-[10px] text-slate-300">0</span>
+          </button>
+          <button onclick="setSubject('Quant')" id="tab-Quant" class="px-4 py-2 rounded-lg text-xs font-semibold transition text-slate-400 hover:text-slate-200 hover:bg-slate-800 flex items-center gap-1.5">
+            <span>Quantitative</span>
+            <span id="cnt-quant" class="bg-slate-800 px-1.5 py-0.5 rounded text-[10px] text-slate-300">0</span>
+          </button>
+          <button onclick="setSubject('AWA')" id="tab-AWA" class="px-4 py-2 rounded-lg text-xs font-semibold transition text-slate-400 hover:text-slate-200 hover:bg-slate-800 flex items-center gap-1.5">
+            <span>AWA</span>
+            <span id="cnt-awa" class="bg-slate-800 px-1.5 py-0.5 rounded text-[10px] text-slate-300">0</span>
+          </button>
+        </div>
       </div>
     </div>
   </header>
@@ -145,6 +152,27 @@
         } catch (e) {}
       }
       return API_BASE;
+    }
+
+    async function downloadAllVerifiedJSON() {
+      showToast("Preparing download of all 2,389 verified questions...", "info");
+      try {
+        const res = await fetch(`${API_BASE}/api/public/questions?subject=all&limit=2500`);
+        const data = await res.json();
+        const questions = data.questions || [];
+        const blob = new Blob([JSON.stringify(questions, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "gre_questions_verified_2389.json";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast(`Successfully downloaded ${questions.length} verified questions!`, "info");
+      } catch (err) {
+        showToast("Failed to download questions JSON file.", "warning");
+      }
     }
 
     let state = {
