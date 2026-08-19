@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"math"
+	"strconv"
 	"strings"
 	"time"
 
@@ -362,8 +364,17 @@ func checkAnswerCorrect(subject string, questionID string, studentAnswer string)
 		if val == "" {
 			val = ca.Value
 		}
-		if strings.EqualFold(strings.TrimSpace(val), studentAnswer) {
+		cleanVal := strings.TrimSpace(val)
+		if strings.EqualFold(cleanVal, studentAnswer) {
 			return true
+		}
+		// Numerical float comparison for Numeric Entry
+		if question.QuestionType == "NUMERIC_ENTRY" || question.AnswerFormat == "NUMERIC_ENTRY" {
+			vFloat, err1 := strconv.ParseFloat(cleanVal, 64)
+			aFloat, err2 := strconv.ParseFloat(studentAnswer, 64)
+			if err1 == nil && err2 == nil && math.Abs(vFloat-aFloat) < 1e-6 {
+				return true
+			}
 		}
 	}
 	return false
