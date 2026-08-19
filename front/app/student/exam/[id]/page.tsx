@@ -1297,9 +1297,22 @@ export default function ExamPlayerPage() {
                           >
                             {opt.label}
                           </span>
-                          <span className="text-sm pt-0.5 leading-snug">
-                            {formatOptionText(opt.label, opt.text)}
-                          </span>
+                          <div className="flex flex-col">
+                            <span className="text-sm pt-0.5 leading-snug">
+                              {formatOptionText(opt.label, opt.text)}
+                            </span>
+                            {(opt.image || opt.image_url || opt.url) && (
+                              <img
+                                src={
+                                  (opt.image || opt.image_url || opt.url).startsWith("http")
+                                    ? (opt.image || opt.image_url || opt.url)
+                                    : `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3500"}/api/images/${encodeURIComponent(opt.image || opt.image_url || opt.url)}`
+                                }
+                                alt={`Option ${opt.label} diagram`}
+                                className="mt-2 max-h-36 max-w-full object-contain rounded-lg border border-slate-200"
+                              />
+                            )}
+                          </div>
                         </button>
                       );
                     })}
