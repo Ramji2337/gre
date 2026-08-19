@@ -162,3 +162,21 @@ Scope: static review of the current `gre` workspace, with extra focus on student
 ### Notes
 
 The backend and frontend are mostly aligned on the general GRE allocation model, but the student start flow has multiple mismatches: UI start labels do not fully match backend eligibility, section start is too permissive, and the safety flush path is disconnected from the server. Fixing those four items would remove the biggest reliability gaps in the test-taking experience.
+
+---
+
+## Remaining Findings After Claimed Fixes
+
+The following issues are still present in the current codebase after re-checking the live paths:
+
+1. `handleStartTest` still uses a half-window cutoff for scheduled tests. The code compares `now` against `alloc.ScheduledAt.Add(duration / 2)`, so a student can be blocked from starting well before the real expiry window ends. See [gobackend/handlers_student.go](gobackend/handlers_student.go#L453).
+
+2. The student exam page still transitions to the exam phase immediately after calling `start-section`. The request is fire-and-forget, so the UI can show the exam even if the backend has not accepted the section start yet. See [front/app/student/exam/[id]/page.tsx](front/app/student/exam/[id]/page.tsx#L457).
+
+3. The MinIO image fallback still injects the requested filename into an SVG response. If a missing image path contains unsafe characters, the fallback can become an SVG injection/XSS surface instead of a harmless placeholder. See [gobackend/handlers_minio.go](gobackend/handlers_minio.go#L99).
+
+4. The image fetch path still performs multiple `StatObject` checks and then falls back to a full recursive bucket scan when no exact match is found. That makes missing-image requests expensive and can slow down question rendering when many figures are absent or misnamed. See [gobackend/handlers_minio.go](gobackend/handlers_minio.go#L99).
+
+5. The question listing and question lookup handlers still use `context.Background()` for MongoDB calls. That is not a functional failure by itself, but it means cancelled requests keep consuming database resources and can delay the test-taking UI under load. See [gobackend/handlers_questions.go](gobackend/handlers_questions.go#L120).
+
+6. The current test flow now has the major ownership and flush gaps reduced, but the remaining server-side start gate is still the main correctness blocker. If you want one next fix, that should be the `handleStartTest` deadline logic, because it directly controls whether students can actually begin the exam on time.

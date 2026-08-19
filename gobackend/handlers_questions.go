@@ -178,7 +178,7 @@ func handleListQuestions(c *fiber.Ctx) error {
 	defer cur.Close(context.Background())
 
 	var questions []Question
-	if err := cur.All(context.Background(), &questions); err != nil {
+	if err := cur.All(c.Context(), &questions); err != nil {
 		return c.JSON(fiber.Map{"questions": []interface{}{}, "total": total, "page": page, "totalPages": totalPages})
 	}
 	if questions == nil {
@@ -221,7 +221,7 @@ func handleGetQuestion(c *fiber.Ctx) error {
 	}
 
 	var question Question
-	err = getCollection(colName).FindOne(context.Background(), bson.M{"_id": objID}).Decode(&question)
+	err = getCollection(colName).FindOne(c.Context(), bson.M{"_id": objID}).Decode(&question)
 	if err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "Question not found"})
 	}

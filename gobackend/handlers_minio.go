@@ -3,10 +3,12 @@ package main
 import (
 	"encoding/base64"
 	"fmt"
+	"html"
 	"io"
 	"net/url"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -14,7 +16,11 @@ import (
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
-var minioClient *minio.Client
+var (
+	minioClient  *minio.Client
+	minioCache   sync.Map // filename -> objectKey cache
+	missingCache sync.Map // filename -> timestamp of missing lookup
+)
 
 func initMinioClient() error {
 	client, err := minio.New(MinioEndpoint, &minio.Options{
@@ -112,75 +118,90 @@ func handleGetImage(c *fiber.Ctx) error {
 		}
 	}
 
-	// Normalize filename
-	filename = strings.TrimPrefix(filename, "/api/images/")
-	filename = strings.TrimPrefix(filename, "api/images/")
-	cleanBase := filename
-	if idx := strings.LastIndex(cleanBase, "."); idx > 0 {
-		cleanBase = cleanBase[:idx]
-	}
-
-	// Try candidate object keys in MinIO (handling missing extensions, uppercase/lowercase, hyphens vs underscores)
-	candidates := []string{
-		filename,
-		cleanBase + ".png",
-		cleanBase + ".jpg",
-		cleanBase + ".jpeg",
-		cleanBase + ".svg",
-		cleanBase + ".webp",
-		strings.ToLower(filename),
-		strings.ToUpper(filename),
-		strings.ReplaceAll(filename, "_", " "),
-		strings.ReplaceAll(filename, " ", "_"),
-		strings.ReplaceAll(filename, "-", "_"),
-		strings.ReplaceAll(filename, "_", "-"),
-		strings.ReplaceAll(cleanBase, "_", " ") + ".png",
-		strings.ReplaceAll(cleanBase, " ", "_") + ".png",
-		strings.ReplaceAll(cleanBase, "_", " ") + ".jpg",
-		strings.ReplaceAll(cleanBase, " ", "_") + ".jpg",
-		strings.ReplaceAll(cleanBase, "-", "_") + ".png",
-		strings.ReplaceAll(cleanBase, "-", "_") + ".jpg",
-	}
-
 	var matchedStat minio.ObjectInfo
 	var matchedKey string
 
-	for _, cand := range candidates {
-		stat, err := minioClient.StatObject(c.Context(), MinioBucket, cand, minio.StatObjectOptions{})
-		if err == nil && stat.Size > 0 {
-			matchedStat = stat
-			matchedKey = cand
-			fmt.Printf("[MinIO] Found exact match for '%s' -> '%s' (%d bytes)\n", filename, matchedKey, stat.Size)
-			break
+	// Check in-memory cache first to avoid expensive redundant lookups
+	if cachedKey, ok := minioCache.Load(filename); ok {
+		if keyStr, isStr := cachedKey.(string); isStr && keyStr != "" {
+			if stat, err := minioClient.StatObject(c.Context(), MinioBucket, keyStr, minio.StatObjectOptions{}); err == nil && stat.Size > 0 {
+				matchedKey = keyStr
+				matchedStat = stat
+			}
 		}
 	}
 
-	// Dynamic prefix fallback search: list objects in MinIO bucket if exact match fails
 	if matchedKey == "" {
-		objectCh := minioClient.ListObjects(c.Context(), MinioBucket, minio.ListObjectsOptions{Recursive: true})
-		for obj := range objectCh {
-			if obj.Err != nil {
-				continue
-			}
-			objLower := strings.ToLower(obj.Key)
-			fnLower := strings.ToLower(cleanBase)
-			if strings.Contains(objLower, fnLower) && obj.Size > 0 {
-				matchedKey = obj.Key
-				matchedStat = obj
-				fmt.Printf("[MinIO] Found fuzzy list match for '%s' -> '%s' (%d bytes)\n", filename, matchedKey, obj.Size)
+		// Normalize filename
+		filename = strings.TrimPrefix(filename, "/api/images/")
+		filename = strings.TrimPrefix(filename, "api/images/")
+		cleanBase := filename
+		if idx := strings.LastIndex(cleanBase, "."); idx > 0 {
+			cleanBase = cleanBase[:idx]
+		}
+
+		// Try candidate object keys in MinIO (handling missing extensions, uppercase/lowercase, hyphens vs underscores)
+		candidates := []string{
+			filename,
+			cleanBase + ".png",
+			cleanBase + ".jpg",
+			cleanBase + ".jpeg",
+			cleanBase + ".svg",
+			cleanBase + ".webp",
+			strings.ToLower(filename),
+			strings.ToUpper(filename),
+			strings.ReplaceAll(filename, "_", " "),
+			strings.ReplaceAll(filename, " ", "_"),
+			strings.ReplaceAll(filename, "-", "_"),
+			strings.ReplaceAll(filename, "_", "-"),
+			strings.ReplaceAll(cleanBase, "_", " ") + ".png",
+			strings.ReplaceAll(cleanBase, " ", "_") + ".png",
+			strings.ReplaceAll(cleanBase, "_", " ") + ".jpg",
+			strings.ReplaceAll(cleanBase, " ", "_") + ".jpg",
+			strings.ReplaceAll(cleanBase, "-", "_") + ".png",
+			strings.ReplaceAll(cleanBase, "-", "_") + ".jpg",
+		}
+
+		for _, cand := range candidates {
+			stat, err := minioClient.StatObject(c.Context(), MinioBucket, cand, minio.StatObjectOptions{})
+			if err == nil && stat.Size > 0 {
+				matchedStat = stat
+				matchedKey = cand
+				minioCache.Store(filename, matchedKey)
+				fmt.Printf("[MinIO] Found exact match for '%s' -> '%s' (%d bytes)\n", filename, matchedKey, stat.Size)
 				break
+			}
+		}
+
+		// Dynamic prefix fallback search: list objects in MinIO bucket if exact match fails
+		if matchedKey == "" {
+			objectCh := minioClient.ListObjects(c.Context(), MinioBucket, minio.ListObjectsOptions{Recursive: true})
+			for obj := range objectCh {
+				if obj.Err != nil {
+					continue
+				}
+				objLower := strings.ToLower(obj.Key)
+				fnLower := strings.ToLower(cleanBase)
+				if strings.Contains(objLower, fnLower) && obj.Size > 0 {
+					matchedKey = obj.Key
+					matchedStat = obj
+					minioCache.Store(filename, matchedKey)
+					fmt.Printf("[MinIO] Found fuzzy list match for '%s' -> '%s' (%d bytes)\n", filename, matchedKey, obj.Size)
+					break
+				}
 			}
 		}
 	}
 
 	if matchedKey == "" {
 		fmt.Printf("[MinIO] Image NOT FOUND for '%s' -> Returning SVG fallback asset\n", filename)
+		safeFilename := html.EscapeString(filename)
 		fallbackSVG := fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" width="400" height="250" viewBox="0 0 400 250" fill="none">
 			<rect width="400" height="250" rx="12" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="2"/>
 			<path d="M160 110L185 140L205 120L240 160H160V110Z" fill="#CBD5E1"/>
 			<circle cx="230" cy="100" r="14" fill="#CBD5E1"/>
 			<text x="200" y="190" font-family="system-ui, sans-serif" font-size="13" font-weight="600" fill="#64748B" text-anchor="middle">Figure Diagram: %s</text>
-		</svg>`, filename)
+		</svg>`, safeFilename)
 		c.Set("Content-Type", "image/svg+xml")
 		c.Set("Cache-Control", "public, max-age=3600")
 		return c.Send([]byte(fallbackSVG))

@@ -454,11 +454,23 @@ export default function ExamPlayerPage() {
     document.documentElement.requestFullscreen().catch(() => {});
   };
 
+  const [isStartingExam, setIsStartingExam] = useState(false);
+
   const startExam = () => {
+    if (isStartingExam) return;
+    setIsStartingExam(true);
     try { localStorage.removeItem(instrKey); } catch {}
     enterFullscreen();
-    api.post(`/student/tests/${allocationId}/start-section`, { section_index: currentSectionIdx }).catch(() => {});
-    setPhase("exam");
+    api
+      .post(`/student/tests/${allocationId}/start-section`, { section_index: currentSectionIdx })
+      .then(() => {
+        setIsStartingExam(false);
+        setPhase("exam");
+      })
+      .catch((err) => {
+        setIsStartingExam(false);
+        toast.error(err?.response?.data?.error || "Failed to start section. Please try again.");
+      });
   };
 
   const reenterFullscreen = () => {

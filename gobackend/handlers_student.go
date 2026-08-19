@@ -454,13 +454,15 @@ func handleStartTest(c *fiber.Ctx) error {
 		if now.Before(alloc.ScheduledAt) {
 			return c.Status(400).JSON(fiber.Map{"error": "Test not yet available. Wait for scheduled time."})
 		}
-		duration := alloc.ExpiresAt.Sub(alloc.ScheduledAt)
-		noStartDeadline := alloc.ScheduledAt.Add(duration / 2)
-		if now.After(noStartDeadline) {
-			getCollection("test_allocations").UpdateOne(context.Background(),
+		deadline := alloc.EndTime
+		if deadline.IsZero() {
+			deadline = alloc.ScheduledAt.Add(120 * time.Minute)
+		}
+		if now.After(deadline) {
+			getCollection("test_allocations").UpdateOne(c.Context(),
 				bson.M{"_id": id},
-				bson.M{"$set": bson.M{"status": "EXPIRED", "updated_at": now}})
-			return c.Status(400).JSON(fiber.Map{"error": "Test has expired - start deadline passed"})
+				bson.M{"$set": bson.M{"status": "EXPIRED", "expired_at": now, "updated_at": now}})
+			return c.Status(400).JSON(fiber.Map{"error": "Test has expired - scheduled window ended"})
 		}
 
 		if len(alloc.Sections) > 0 && alloc.Sections[0].StartedAt == nil {
