@@ -127,7 +127,26 @@
   </main>
 
   <script>
-    const API_BASE = "http://localhost:3500";
+    let API_BASE = "http://localhost:3500";
+    const candidateBases = [
+      "http://localhost:3500",
+      "http://127.0.0.1:3500",
+      window.location.origin.startsWith("http") ? window.location.origin : ""
+    ].filter(Boolean);
+
+    async function getWorkingApiBase() {
+      for (const base of candidateBases) {
+        try {
+          const res = await fetch(`${base}/api/health`, { method: "GET" });
+          if (res.ok) {
+            API_BASE = base;
+            return base;
+          }
+        } catch (e) {}
+      }
+      return API_BASE;
+    }
+
     let state = {
       subject: "all",
       category: "",
@@ -141,7 +160,8 @@
       selectedAnswers: {} // question_id -> selection state
     };
 
-    document.addEventListener("DOMContentLoaded", () => {
+    document.addEventListener("DOMContentLoaded", async () => {
+      await getWorkingApiBase();
       loadCategories();
       fetchQuestions();
     });
