@@ -49,6 +49,10 @@ func handleAllocateTest(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid test_type. Use FULL_LENGTH, SECTIONAL, or TOPIC_WISE"})
 	}
 
+	if scheduledAt.Before(time.Now().Add(-5 * time.Minute)) {
+		return c.Status(400).JSON(fiber.Map{"error": "Scheduled time cannot be in the past"})
+	}
+
 	graceMins := 30
 	expiresAt := scheduledAt.Add(time.Duration(durationMins+graceMins) * time.Minute)
 

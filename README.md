@@ -126,3 +126,39 @@ cd front
 npm run dev
 # App runs on http://localhost:3001
 ```
+
+---
+
+## Bug Analysis Report
+
+Scope: static review of the current `gre` workspace, with extra focus on student test taking, test allocation, and the start/submit flow.
+
+### High Priority Findings
+
+1. The student dashboard shows a generic `Start Test` button for the next scheduled allocation even when the test is not yet startable. The click always routes to the exam page, which then tries to start the test and surfaces an error if the schedule has not opened yet. This creates a broken start flow on the student side. See [front/app/student/dashboard/page.tsx](front/app/student/dashboard/page.tsx#L247) and [front/app/student/exam/[id]/page.tsx](front/app/student/exam/[id]/page.tsx#L269).
+
+2. The exam page sends a `sendBeacon` flush request to `/api/student/tests/:id/flush-answers`, but no matching backend route is registered. That means the leave-page flush safety net does not actually persist anything server-side. See [front/app/student/exam/[id]/page.tsx](front/app/student/exam/[id]/page.tsx#L231) and [gobackend/main.go](gobackend/main.go#L81).
+
+3. The exam page moves into the `exam` phase immediately after calling `start-section`, without waiting for the API call to succeed. If the backend rejects or delays the request, the UI still behaves as if the section has started. See [front/app/student/exam/[id]/page.tsx](front/app/student/exam/[id]/page.tsx#L457).
+
+4. Test allocation creation accepts any RFC3339 timestamp and does not reject times in the past. That means an admin can create an allocation whose scheduled time is already expired, even though reschedule and reallocate paths do reject past times. See [gobackend/handlers_tests.go](gobackend/handlers_tests.go#L16).
+
+5. The student start gate is too strict: `handleStartTest` computes `noStartDeadline` as half of the total test window, not the full end of the window. A student can be blocked from starting long before the allocation actually expires. See [gobackend/handlers_student.go](gobackend/handlers_student.go#L453).
+
+6. `handleStartSection` lets a student mark a section as started without checking that the parent test is in progress. It also does not validate the scheduled window. That makes the section-start marker easy to manipulate outside the intended flow. See [gobackend/handlers_student.go](gobackend/handlers_student.go#L1527).
+
+7. `handleSubmitSection` does not check that the caller owns the allocation. Any authenticated student who knows an allocation id can submit that section because the handler only loads by allocation id and never compares `StudentID` to the current user. See [gobackend/handlers_adaptive.go](gobackend/handlers_adaptive.go#L79).
+
+8. `handleSubmitExam` allows final submission as soon as the allocation status is `IN_PROGRESS`; it does not verify that all sections were actually submitted first. A client can therefore end an exam early by calling the final submit endpoint directly. See [gobackend/handlers_student.go](gobackend/handlers_student.go#L613).
+
+### Medium Priority Findings
+
+1. The allocation admin page keeps separate `fTimeFrom` and `fTimeTo` state, but those values are not used when querying allocations. The time filter UI therefore looks supported but has no effect. See [front/app/admin/allocate-test/page.tsx](front/app/admin/allocate-test/page.tsx#L40).
+
+2. The allocation page and student dashboard both rely on client-side routing for start actions, but the backend is the real source of truth. This is fine only if the UI copies the same startability rules exactly; right now the dashboard does not, so the two sides disagree about when a test can begin. See [front/app/student/dashboard/page.tsx](front/app/student/dashboard/page.tsx#L263) and [gobackend/handlers_student.go](gobackend/handlers_student.go#L426).
+
+3. Several backend handlers still use `context.Background()` for MongoDB calls instead of the request context. That is not a crash bug by itself, but it means cancelled HTTP requests can continue consuming database resources. This pattern is visible throughout the student and allocation handlers, including [gobackend/handlers_student.go](gobackend/handlers_student.go#L438) and [gobackend/handlers_tests.go](gobackend/handlers_tests.go#L144).
+
+### Notes
+
+The backend and frontend are mostly aligned on the general GRE allocation model, but the student start flow has multiple mismatches: UI start labels do not fully match backend eligibility, section start is too permissive, and the safety flush path is disconnected from the server. Fixing those four items would remove the biggest reliability gaps in the test-taking experience.

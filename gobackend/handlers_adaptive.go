@@ -87,10 +87,23 @@ func handleSubmitSection(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid request"})
 	}
 
+	userIDStr, ok := c.Locals("userID").(string)
+	if !ok || userIDStr == "" {
+		return c.Status(401).JSON(fiber.Map{"error": "Unauthorized"})
+	}
+	userID, err := primitive.ObjectIDFromHex(userIDStr)
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid user ID"})
+	}
+
 	var alloc TestAllocation
 	err = getCollection("test_allocations").FindOne(context.Background(), bson.M{"_id": id}).Decode(&alloc)
 	if err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "Allocation not found"})
+	}
+
+	if alloc.StudentID != userID {
+		return c.Status(403).JSON(fiber.Map{"error": "Not your test allocation"})
 	}
 
 	if req.SectionIndex < 0 || req.SectionIndex >= len(alloc.Sections) {

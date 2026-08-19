@@ -91,6 +91,8 @@ function AllocateTestContent() {
     if (fTestType) params.test_type = fTestType;
     if (fDateFrom) params.date_from = fDateFrom;
     if (fDateTo) params.date_to = fDateTo;
+    if (fTimeFrom) params.time_from = fTimeFrom;
+    if (fTimeTo) params.time_to = fTimeTo;
 
     api.get("/admin/tests/allocations", { params })
       .then((res) => {
@@ -100,7 +102,7 @@ function AllocateTestContent() {
         setStatusCounts(res.data.statusCounts || {});
       })
       .finally(() => setLoading(false));
-  }, [fSearch, fStatus, fTestType, fDateFrom, fDateTo]);
+  }, [fSearch, fStatus, fTestType, fDateFrom, fDateTo, fTimeFrom, fTimeTo]);
 
   // Fetch allocations on mount and when filters change
   useEffect(() => { fetchAllocations(currentPage); }, [currentPage, fetchAllocations]);

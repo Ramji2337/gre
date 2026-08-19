@@ -260,12 +260,22 @@ export default function StudentDashboard() {
                 {nextTest.status === "IN_PROGRESS" && <p className="font-medium text-amber-600">Expires {getTimeUntil(nextTest.expires_at)}</p>}
               </div>
             </div>
-            <button
-              onClick={() => router.push(`/student/exam/${nextTest._id}`)}
-              className="bg-slate-800 text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-slate-900 transition whitespace-nowrap"
-            >
-              {nextTest.status === "IN_PROGRESS" ? "Resume Test" : "Start Test"}
-            </button>
+            {(() => {
+              const isStartable = nextTest.status === "IN_PROGRESS" || (nextTest.status === "SCHEDULED" && new Date().getTime() >= new Date(nextTest.scheduled_at).getTime());
+              return (
+                <button
+                  disabled={!isStartable}
+                  onClick={() => isStartable && router.push(`/student/exam/${nextTest._id}`)}
+                  className={`px-6 py-3 rounded-xl font-bold text-sm transition whitespace-nowrap ${
+                    isStartable
+                      ? "bg-slate-800 text-white hover:bg-slate-900 cursor-pointer"
+                      : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                  }`}
+                >
+                  {nextTest.status === "IN_PROGRESS" ? "Resume Test" : isStartable ? "Start Test" : "Available Soon"}
+                </button>
+              );
+            })()}
           </div>
         </div>
       ) : (

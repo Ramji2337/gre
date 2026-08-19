@@ -1151,6 +1151,61 @@ func handleSaveAnswer(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"message": "Answer saved", "question_id": req.QuestionID})
 }
 
+func handleFlushAnswers(c *fiber.Ctx) error {
+	userIDStr, ok := c.Locals("userID").(string)
+	if !ok || userIDStr == "" {
+		return c.Status(401).JSON(fiber.Map{"error": "Unauthorized"})
+	}
+	userID, err := primitive.ObjectIDFromHex(userIDStr)
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid user ID"})
+	}
+
+	id, err := primitive.ObjectIDFromHex(c.Params("id"))
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid allocation ID"})
+	}
+
+	var req struct {
+		Answers      map[string]string `json:"answers"`
+		SectionIndex int               `json:"section_index"`
+	}
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid request payload"})
+	}
+
+	var alloc TestAllocation
+	err = getCollection("test_allocations").FindOne(context.Background(), bson.M{"_id": id}).Decode(&alloc)
+	if err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Allocation not found"})
+	}
+	if alloc.StudentID != userID {
+		return c.Status(403).JSON(fiber.Map{"error": "Not your test"})
+	}
+
+	now := time.Now()
+	for qid, ans := range req.Answers {
+		if qid == "" {
+			continue
+		}
+		getCollection("draft_answers").UpdateOne(
+			context.Background(),
+			bson.M{"allocation_id": id, "question_id": qid},
+			bson.M{"$set": bson.M{
+				"allocation_id": id,
+				"student_id":    userID,
+				"question_id":   qid,
+				"answer":        ans,
+				"section_index": req.SectionIndex,
+				"updated_at":    now,
+			}},
+			options.Update().SetUpsert(true),
+		)
+	}
+
+	return c.JSON(fiber.Map{"message": "Answers flushed successfully", "count": len(req.Answers)})
+}
+
 func handleStudentAnalyticsPage(c *fiber.Ctx) error {
 	userID, err := primitive.ObjectIDFromHex(c.Locals("userID").(string))
 	if err != nil {
@@ -1544,6 +1599,10 @@ func handleStartSection(c *fiber.Ctx) error {
 	err = getCollection("test_allocations").FindOne(context.Background(), bson.M{"_id": id, "student_id": userID}).Decode(&alloc)
 	if err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "Allocation not found"})
+	}
+
+	if alloc.Status != "IN_PROGRESS" {
+		return c.Status(400).JSON(fiber.Map{"error": "Test must be in progress to start a section"})
 	}
 
 	if req.SectionIndex < 0 || req.SectionIndex >= len(alloc.Sections) {

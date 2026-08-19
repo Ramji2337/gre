@@ -562,16 +562,25 @@ export default function ExamPlayerPage() {
               setCurrentSectionIdx(nextIdx);
               setCurrentQIdx(0);
               const nextSec = freshData.sections[nextIdx];
-              let nextTimer = nextSec.duration_mins * 60;
-              if (nextSec.started_at) {
-                const elapsed = Math.floor((Date.now() - new Date(nextSec.started_at).getTime()) / 1000);
-                nextTimer = Math.max(0, nextSec.duration_mins * 60 - elapsed);
-              } else {
-                api.post(`/student/tests/${allocationId}/start-section`, { section_index: nextIdx }).catch(() => {});
-              }
-              setSectionTimer(nextTimer);
-              setPhase("exam");
-              setIsSubmitting(false);
+              const startPromise = nextSec.started_at
+                ? Promise.resolve()
+                : api.post(`/student/tests/${allocationId}/start-section`, { section_index: nextIdx });
+
+              startPromise
+                .then(() => {
+                  let nextTimer = nextSec.duration_mins * 60;
+                  if (nextSec.started_at) {
+                    const elapsed = Math.floor((Date.now() - new Date(nextSec.started_at).getTime()) / 1000);
+                    nextTimer = Math.max(0, nextSec.duration_mins * 60 - elapsed);
+                  }
+                  setSectionTimer(nextTimer);
+                  setPhase("exam");
+                  setIsSubmitting(false);
+                })
+                .catch(() => {
+                  setIsSubmitting(false);
+                  toast.error("Failed to start section.");
+                });
             }, 3000);
           } else {
             setIsSubmitting(false);

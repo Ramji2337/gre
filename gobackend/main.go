@@ -90,6 +90,7 @@ func main() {
 	student.Post("/tests/:id/submit", handleSubmitExam)
 	student.Post("/tests/:id/violation", handleLogViolation)
 	student.Post("/tests/:id/answer", handleSaveAnswer)
+	student.Post("/tests/:id/flush-answers", handleFlushAnswers)
 	student.Get("/tests/:id/result", handleGetTestResult)
 	student.Get("/analytics", handleStudentAnalyticsPage)
 	student.Post("/tests/allocations/:id/submit-section", handleSubmitSection)
