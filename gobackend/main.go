@@ -95,6 +95,11 @@ func main() {
 	student.Get("/analytics", handleStudentAnalyticsPage)
 	student.Post("/tests/allocations/:id/submit-section", handleSubmitSection)
 
+	// Public Routes
+	app.Get("/api/public/questions", handlePublicListQuestions)
+	app.Get("/api/public/categories", handleGetCategories)
+	app.Static("/public", "../front/public")
+
 	// Public Image Proxy
 	app.Get("/api/images/:filename", handleGetImage)
 

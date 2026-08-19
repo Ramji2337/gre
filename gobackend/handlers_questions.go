@@ -454,3 +454,117 @@ func handleGetQuestionStats(c *fiber.Ctx) error {
 	}
 	return c.JSON(fiber.Map{"stats": result})
 }
+
+func handlePublicListQuestions(c *fiber.Ctx) error {
+	subject := c.Query("subject", "all")
+	category := c.Query("category")
+	level := c.Query("level")
+	qType := c.Query("question_type")
+	search := c.Query("search")
+	page, _ := strconv.Atoi(c.Query("page", "1"))
+	if page < 1 {
+		page = 1
+	}
+	limit, _ := strconv.Atoi(c.Query("limit", "20"))
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
+	skip := (page - 1) * limit
+
+	var collections []string
+	if subject == "all" || subject == "" {
+		collections = []string{"verbal_questions", "quant_questions", "awa_questions"}
+	} else {
+		col := subjectToCollection(subject)
+		if col != "" {
+			collections = []string{col}
+		} else {
+			collections = []string{"verbal_questions", "quant_questions", "awa_questions"}
+		}
+	}
+
+	filter := bson.M{"is_active": bson.M{"$ne": false}}
+	if category != "" {
+		filter["category"] = category
+	}
+	if level != "" {
+		filter["level"] = level
+	}
+	if qType != "" {
+		filter["question_type"] = qType
+	}
+	if search != "" {
+		escaped := regexp.QuoteMeta(search)
+		filter["$or"] = bson.A{
+			bson.M{"question_text": bson.M{"$regex": escaped, "$options": "i"}},
+			bson.M{"question_id": bson.M{"$regex": escaped, "$options": "i"}},
+			bson.M{"category": bson.M{"$regex": escaped, "$options": "i"}},
+		}
+	}
+
+	var allQuestions []Question
+	var totalDocs int64 = 0
+
+	// Counts per subject
+	vCount, _ := getCollection("verbal_questions").CountDocuments(c.Context(), filter)
+	qCount, _ := getCollection("quant_questions").CountDocuments(c.Context(), filter)
+	aCount, _ := getCollection("awa_questions").CountDocuments(c.Context(), filter)
+
+	for _, colName := range collections {
+		col := getCollection(colName)
+		colTotal, _ := col.CountDocuments(c.Context(), filter)
+		totalDocs += colTotal
+
+		findOpts := options.Find().SetSort(bson.D{{Key: "created_at", Value: -1}})
+		cur, err := col.Find(c.Context(), filter, findOpts)
+		if err == nil {
+			var qList []Question
+			if err := cur.All(c.Context(), &qList); err == nil {
+				allQuestions = append(allQuestions, qList...)
+			}
+			cur.Close(c.Context())
+		}
+	}
+
+	totalPages := int(totalDocs) / limit
+	if int(totalDocs)%limit != 0 {
+		totalPages++
+	}
+
+	// Paginate merged list
+	start := skip
+	end := skip + limit
+	if start > len(allQuestions) {
+		start = len(allQuestions)
+	}
+	if end > len(allQuestions) {
+		end = len(allQuestions)
+	}
+
+	pagedQuestions := allQuestions[start:end]
+
+	// Process image URLs
+	for i := range pagedQuestions {
+		for j := range pagedQuestions[i].Images {
+			storage := strings.ToLower(pagedQuestions[i].Images[j].Storage)
+			if storage == "s3" || storage == "minio" || pagedQuestions[i].Images[j].ImageName != "" {
+				pagedQuestions[i].Images[j].ImageName = minioImageURL(pagedQuestions[i].Images[j].ImageName)
+			}
+		}
+	}
+
+	return c.JSON(fiber.Map{
+		"questions":  pagedQuestions,
+		"total":      totalDocs,
+		"page":       page,
+		"totalPages": totalPages,
+		"limit":      limit,
+		"counts": fiber.Map{
+			"Verbal": vCount,
+			"Quant":  qCount,
+			"AWA":    aCount,
+			"total":  vCount + qCount + aCount,
+		},
+	})
+}
+
