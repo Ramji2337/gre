@@ -23,6 +23,7 @@ interface Question {
   passage: string;
   options: QuestionOption[];
   images: any[];
+  correct_answers?: any[];
   saved_answer?: string;
 }
 
@@ -502,20 +503,21 @@ export default function ExamPlayerPage() {
       const currentVal = answers[questionId] || "";
       const currentArr = currentVal ? currentVal.split(",").map((s) => s.trim()).filter(Boolean) : [];
 
-      const isSentenceEquivalence =
-        currentQuestion?.question_type === "SENTENCE_EQUIVALENCE" ||
-        currentQuestion?.category === "SENTENCE EQUIVALENCE" ||
-        (currentQuestion?.options?.length === 6 && currentQuestion?.subject === "Verbal");
+      const qt = (currentQuestion?.question_type || "").toUpperCase();
+      const cat = (currentQuestion?.category || "").toUpperCase();
+      const isSentenceEquivalence = qt === "SENTENCE_EQUIVALENCE" || cat.includes("SENTENCE EQUIVALENCE");
+      
+      const correctCount = (currentQuestion?.correct_answers || []).length;
+      let maxChoices = isSentenceEquivalence ? 2 : (correctCount > 1 ? correctCount : 3);
 
       if (currentArr.includes(optionLabel)) {
         nextAnswer = currentArr.filter((l) => l !== optionLabel).join(",");
       } else {
-        if (isSentenceEquivalence && currentArr.length >= 2) {
-          toast.info("Sentence Equivalence requires selecting exactly 2 answers.");
-          nextAnswer = [currentArr[1], optionLabel].sort().join(",");
-        } else {
-          nextAnswer = [...currentArr, optionLabel].sort().join(",");
+        if (currentArr.length >= maxChoices) {
+          toast.warning(`Maximum ${maxChoices} selections allowed for this question!`);
+          return;
         }
+        nextAnswer = [...currentArr, optionLabel].sort().join(",");
       }
     }
     setAnswers((prev) => ({ ...prev, [questionId]: nextAnswer }));
@@ -1239,42 +1241,55 @@ export default function ExamPlayerPage() {
                 ];
                 const displayOptions = isQC ? defaultQCOptions : (currentQuestion.options || []);
 
-                return displayOptions.map((opt: any, i: number) => {
-                  const currentSelectedArr = (answers[currentQuestion.question_id] || "")
-                    .split(",")
-                    .map((s) => s.trim())
-                    .filter(Boolean);
-                  const isSelected = isMultiAnswer
-                    ? currentSelectedArr.includes(opt.label)
-                    : answers[currentQuestion.question_id] === opt.label;
+                const correctCount = (currentQuestion?.correct_answers || []).length;
+                const maxChoices = isSE ? 2 : (correctCount > 1 ? correctCount : 3);
+                const currentSelectedArr = (answers[currentQuestion.question_id] || "")
+                  .split(",")
+                  .map((s) => s.trim())
+                  .filter(Boolean);
 
-                  return (
-                    <button
-                      key={i}
-                      onClick={() => handleAnswerSelect(currentQuestion.question_id, opt.label, isMultiAnswer)}
-                      className={`w-full text-left p-4 transition flex items-start gap-3 border-2 ${
-                        isMultiAnswer ? "rounded-xl" : "rounded-full"
-                      } ${
-                        isSelected
-                          ? "border-blue-600 bg-blue-50/80 text-blue-950 font-medium shadow-sm"
-                          : "border-slate-200 bg-white hover:border-slate-300 text-slate-800"
-                      }`}
-                    >
-                      <span
-                        className={`w-6 h-6 flex items-center justify-center text-xs font-bold flex-shrink-0 transition ${
-                          isMultiAnswer ? "rounded-md" : "rounded-full"
-                        } ${
-                          isSelected ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-600 border border-slate-300"
-                        }`}
-                      >
-                        {opt.label}
-                      </span>
-                      <span className="text-sm pt-0.5 leading-snug">
-                        {formatOptionText(opt.label, opt.text)}
-                      </span>
-                    </button>
-                  );
-                });
+                return (
+                  <div className="space-y-2.5">
+                    {isMultiAnswer && (
+                      <div className="flex items-center justify-between text-xs font-semibold text-slate-500 px-1 mb-1">
+                        <span>Selection Limit: Max {maxChoices} choices</span>
+                        <span className="font-mono text-blue-600">Selected: {currentSelectedArr.length}/{maxChoices}</span>
+                      </div>
+                    )}
+                    {displayOptions.map((opt: any, i: number) => {
+                      const isSelected = isMultiAnswer
+                        ? currentSelectedArr.includes(opt.label)
+                        : answers[currentQuestion.question_id] === opt.label;
+
+                      return (
+                        <button
+                          key={i}
+                          onClick={() => handleAnswerSelect(currentQuestion.question_id, opt.label, isMultiAnswer)}
+                          className={`w-full text-left p-4 transition flex items-start gap-3 border-2 ${
+                            isMultiAnswer ? "rounded-xl" : "rounded-full"
+                          } ${
+                            isSelected
+                              ? "border-blue-600 bg-blue-50/80 text-blue-950 font-medium shadow-sm"
+                              : "border-slate-200 bg-white hover:border-slate-300 text-slate-800"
+                          }`}
+                        >
+                          <span
+                            className={`w-6 h-6 flex items-center justify-center text-xs font-bold flex-shrink-0 transition ${
+                              isMultiAnswer ? "rounded-md" : "rounded-full"
+                            } ${
+                              isSelected ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-600 border border-slate-300"
+                            }`}
+                          >
+                            {opt.label}
+                          </span>
+                          <span className="text-sm pt-0.5 leading-snug">
+                            {formatOptionText(opt.label, opt.text)}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
               })()}
             </div>
 
